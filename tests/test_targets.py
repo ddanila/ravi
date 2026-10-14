@@ -1,7 +1,10 @@
 import unittest
 from dataclasses import replace
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from ravi.backends.dos.client import Client
+from ravi.backends.juku.target import JukuTarget
 from ravi.backends.monitor import MonitorTarget
 from ravi.execution import CompletionDeadline, OutcomeUnknown
 from ravi.monitor import SessionError
@@ -146,6 +149,47 @@ class TargetTests(unittest.TestCase):
         with self.assertRaises(OutcomeUnknown):
             target.call(0x8000)
         self.assertTrue(target.invalidated)
+
+    def test_repaired_frame_crc_cannot_hide_wrong_read_or_write_ack(self):
+        for operation, index in (("read", 4), ("read", 5), ("write", 5), ("write", 8)):
+            with self.subTest(operation=operation, index=index):
+                _, target = self.target()
+                handler = target.transport.handler
+
+                def corrupt(data):
+                    frame = wire.StreamDecoder().feed(handler(data))[0]
+                    payload = bytearray(frame.payload)
+                    payload[index] ^= 1
+                    return wire.encode_frame(frame.record_type, bytes(payload))
+
+                target.transport.handler = corrupt
+                with self.assertRaises(SessionError):
+                    if operation == "read":
+                        target.read_memory(0x8000, 2)
+                    else:
+                        target.write_memory(0x8000, b"ab")
+
+    def test_juku_call_forces_call_mode_and_invalidates_after_uncertainty(self):
+        session = SimpleNamespace(
+            loader={"ready": {"api_version": 2}}, loader_run_mode="jump"
+        )
+
+        def fail(*args):
+            self.assertEqual(session.loader_run_mode, "call")
+            self.assertTrue(session.ravi_call_active)
+            raise SessionError("lost return")
+
+        session.run_resident_loader_v2 = Mock(side_effect=fail)
+        target = JukuTarget(session)
+        with self.assertRaises(OutcomeUnknown):
+            target.call(0x4000)
+        self.assertEqual(session.loader_run_mode, "jump")
+        self.assertFalse(session.ravi_call_active)
+        with self.assertRaises(SessionError):
+            target.call(0x4000)
+        with self.assertRaises(SessionError):
+            JukuTarget(session)
+        session.run_resident_loader_v2.assert_called_once()
 
     def test_completion_deadline_is_not_extended_by_duplicate_started(self):
         completion = CompletionDeadline(10)

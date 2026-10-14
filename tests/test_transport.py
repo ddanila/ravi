@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from ravi.transport import (
+    FDTransport,
     LoggedTransport,
     SerialTransport,
     SocketTransport,
@@ -35,6 +36,35 @@ class SerialTransportTests(unittest.TestCase):
         finally:
             os.close(master)
             os.close(slave)
+
+
+class FDTransportTests(unittest.TestCase):
+    def test_duplicate_and_borrow_have_explicit_ownership(self):
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+        with self.assertRaises(ValueError):
+            FDTransport(left.fileno())
+        left.setblocking(False)
+        original = left.fileno()
+        for duplicate in (True, False):
+            with self.subTest(duplicate=duplicate):
+                transport = FDTransport(original, duplicate=duplicate)
+                fd = transport.fd
+                self.assertEqual(fd == original, not duplicate)
+                right.sendall(b"abc")
+                self.assertEqual(transport.read(3, 1), b"abc")
+                transport.write(b"ok")
+                self.assertEqual(right.recv(2), b"ok")
+                transport.close()
+                transport.close()
+                os.fstat(original)
+                self.assertFalse(os.get_blocking(original))
+                if duplicate:
+                    with self.assertRaises(OSError):
+                        os.fstat(fd)
+                with self.assertRaises(TransportError):
+                    transport.write(b"closed")
 
 
 class StreamContractTests(unittest.TestCase):

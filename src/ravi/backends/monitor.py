@@ -157,7 +157,7 @@ class MonitorTarget(MonitorTransactions):
         if self.profile.replay_safe:
             required |= wire.LOADER_V2_CAP_RUN_REPLAY
         if (
-            api != 2
+            api != wire.LOADER_V2_API_VERSION
             or max_data < self.profile.memory.max_chunk
             or caps & required != required
         ):

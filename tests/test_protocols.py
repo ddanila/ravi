@@ -4,8 +4,7 @@ from unittest.mock import patch
 from ravi.backends.juku import protocol as juku
 from ravi.integrity import crc8_atm, crc16_ccitt, crc32
 from ravi.monitor import LoaderResponseTimeout, MonitorTransactions
-from ravi.protocols import dos_v1 as dos
-from ravi.protocols import monitor_v2 as monitor
+from ravi.protocols import dos_v1 as dos, monitor_v2 as monitor
 
 
 class ProtocolTests(unittest.TestCase):

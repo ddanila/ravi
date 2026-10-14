@@ -1,0 +1,33 @@
+name: RAVI contracts
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e '.[test]' build
+      - run: make check
+      - name: Isolated wheel installation
+        run: |
+          python -m build --wheel
+          python -m venv "$RUNNER_TEMP/ravi-wheel"
+          "$RUNNER_TEMP/ravi-wheel/bin/pip" install dist/*.whl
+          cp examples/memory_monitor.py "$RUNNER_TEMP/example.py"
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/ravi-wheel/bin/python" example.py

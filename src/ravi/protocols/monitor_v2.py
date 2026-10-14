@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..integrity import crc8_atm
-from ..integrity import crc16_ccitt as crc16_ccitt_false
+from ..integrity import crc8_atm, crc16_ccitt as crc16_ccitt_false
 from ..targets import MemoryLayout
 
 SYNC = bytes((0xA5, 0x5A))
 PROTOCOL_VERSION = 1
+LOADER_V2_API_VERSION = 2
 TYPE_BANNER = 0x01
 TYPE_ACK = 0x81
 TYPE_RAM_BEGIN = 0x10

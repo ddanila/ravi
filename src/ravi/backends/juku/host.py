@@ -24,11 +24,9 @@ from ...monitor import (
     LoaderResponseTimeout,
     MonitorTransactions,
     SessionError,
+    decode_loader_v2_data as decode_loader_v2_data,
     decode_loader_v2_result,
     loader_status_name,
-)
-from ...monitor import (
-    decode_loader_v2_data as decode_loader_v2_data,
 )
 from ...transport import read_fd, write_fd
 from . import protocol
@@ -810,6 +808,11 @@ class HostSession(MonitorTransactions):
                 if frame.record_type == protocol.TYPE_NANO_LIVENESS:
                     self._accept_nano_liveness(frame)
                     continue
+                if getattr(self, "ravi_call_active", False) and frame.record_type in (
+                    protocol.TYPE_BANNER,
+                    protocol.TYPE_LOADER_READY,
+                ):
+                    raise SessionError("target boot/READY observed during CALL")
                 if frame.record_type == protocol.TYPE_BANNER:
                     self._accept_banner(frame, deadline)
                     continue
