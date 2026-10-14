@@ -57,9 +57,21 @@ product compatibility CI policy.
 DOSRAVI `1cd4676` passed its 51-test native suite, C protocol tests, Ruff,
 cppcheck, real DOSBox-X agent integration on both 8086 and 80186, and isolated
 installed-CLI verification. Jukuravi `9e8059b7` passed T28 (including the shared
-memory API) and T34 locally; the consumer workflow retains all T36 groups and
-the older ROM regressions. Full hosted results are visible in the Actions tabs
-of all three repositories. None of these results adds physical qualification.
+memory API), T34 and all T36 groups locally, including full RAM and raster
+retention. Follow-up `6589ccd4` adds the RAVI checkout to the rev B serial-vector
+consumer's CI job and includes that consumer in dependency selection. Its serial
+console test and selector checks passed locally. The consumer workflow retains
+the older ROM regressions as well.
+
+Published checks:
+
+- [RAVI Python 3.10/3.12 contracts and installed wheel](https://github.com/ddanila/ravi/actions/runs/38515759787)
+- [RAVI candidate against DOS and Juku product harnesses](https://github.com/ddanila/ravi/actions/runs/38515759740)
+- [DOSRAVI native, packaging, fuzz and actual-agent CI](https://github.com/ddanila/dosravi/actions/runs/38515705086)
+- [Juku full consumer CI after the dependency correction](https://github.com/ddanila/8080-cosim/actions/runs/38516019995)
+
+The first three completed successfully; the linked Juku run records the final
+hosted outcome. None of these results adds physical qualification.
 
 Both consumers pin the implementation revision; subsequent library CI and prose
 changes need no consumer pin bump because they do not alter installed code.

@@ -5,7 +5,12 @@ commands, physical evidence, target firmware, and qualification gates. Their
 existing wire dialects remain explicit, versioned backends; capability-level
 operations do not pretend memory CALL and DOS EXEC are identical.
 
-Completion requires:
+The implemented acceptance criteria are listed below. Validation commands,
+published revisions and CI evidence are recorded in [testing.md](testing.md).
+The scope stops at a qualified extension interface and synthetic example;
+1715 firmware and hardware qualification remain future target work.
+
+Acceptance criteria:
 
 1. A standalone, installable standard-library-only Python package, with
    transport ownership/deadline/logging contracts and shared integrity code.
