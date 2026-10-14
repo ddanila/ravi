@@ -1,6 +1,7 @@
 """Execution lifetime accounting, independent of a wire dialect."""
 
 from dataclasses import dataclass
+
 from .transport import TransportError
 
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Jukuravi host session CLI for a serial port or the cosim PTY harness."""
 
 from __future__ import annotations
@@ -6,7 +5,6 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime as dt
-import errno
 import fcntl
 import glob
 import hashlib
@@ -21,13 +19,19 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from . import protocol
-from ...transport import write_fd, read_fd
 from ...monitor import (
-    SessionError, LoaderFrameError, LoaderResponseTimeout, MonitorTransactions,
-    loader_status_name, decode_loader_v2_result, decode_loader_v2_data,
+    LoaderFrameError,
+    LoaderResponseTimeout,
+    MonitorTransactions,
+    SessionError,
+    decode_loader_v2_result,
+    loader_status_name,
 )
-
+from ...monitor import (
+    decode_loader_v2_data as decode_loader_v2_data,
+)
+from ...transport import read_fd, write_fd
+from . import protocol
 
 DEFAULT_BAUD = 2400
 DEFAULT_TIMEOUT = 180.0
@@ -406,6 +410,32 @@ class HostSession(MonitorTransactions):
         self._attempt_rx_start = 0
         self._attempt_tx_start = 0
         self._attempt_dtr_start = 0
+
+    @property
+    def target_info(self):
+        from ...targets import TargetInfo
+        from .target import JukuTarget
+
+        if (
+            self.loader is not None
+            and self.loader.get("ready", {}).get("api_version") == 2
+        ):
+            return JukuTarget.target_info
+        return TargetInfo("juku", "juku-diagnostics", frozenset())
+
+    def as_target(self, *, timeout=DEFAULT_LOADER_TIMEOUT):
+        from .target import JukuTarget
+
+        return JukuTarget(self, timeout=timeout)
+
+    def read_memory(self, address: int, length: int) -> bytes:
+        return self.as_target().read_memory(address, length)
+
+    def write_memory(self, address: int, data: bytes) -> None:
+        self.as_target().write_memory(address, data)
+
+    def call(self, address: int):
+        return self.as_target().call(address)
 
     def begin_attempt(self, number: int) -> None:
         self.decoder = protocol.StreamDecoder()
@@ -1081,9 +1111,13 @@ class HostSession(MonitorTransactions):
                     timeout,
                     f"control READ {offset}",
                 )
-                if detail["status"] != protocol.LOADER_STATUS_OK:
+                if (
+                    detail["status"] != protocol.LOADER_STATUS_OK
+                    or detail["address"] != read_address
+                    or len(part) != count
+                ):
                     raise SessionError(
-                        "loader API v2 control READ failed: "
+                        "loader API v2 control READ failed or returned a different range: "
                         f"{loader_status_name(detail['status'])}"
                     )
                 read_data.extend(part)
@@ -2702,26 +2736,31 @@ def main() -> int:
     )
     completion = None
     if upload_data is not None:
-        completion = lambda: session.run_loader(
-            upload_data,
-            str(args.load),
-            args.load_address,
-            run_address,
-            args.loader_timeout,
-            args.heartbeat_count,
-            args.heartbeat_timeout,
-        )
+
+        def completion():
+            return session.run_loader(
+                upload_data,
+                str(args.load),
+                args.load_address,
+                run_address,
+                args.loader_timeout,
+                args.heartbeat_count,
+                args.heartbeat_timeout,
+            )
     elif args.probe_loader:
-        completion = lambda: session.run_loader(
-            b"",
-            "<loader API v2 control>",
-            protocol.LOADER_V2_LOAD_MIN,
-            None,
-            args.loader_timeout,
-            0,
-            args.heartbeat_timeout,
-            True,
-        )
+
+        def completion():
+            return session.run_loader(
+                b"",
+                "<loader API v2 control>",
+                protocol.LOADER_V2_LOAD_MIN,
+                None,
+                args.loader_timeout,
+                0,
+                args.heartbeat_timeout,
+                True,
+            )
+
     try:
         if args.attach_loader:
             attach_data = b"" if upload_data is None else upload_data

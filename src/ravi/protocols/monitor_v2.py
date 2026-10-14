@@ -1,7 +1,11 @@
 """Monitor v2 frames and memory commands, independent of CPU and board layout."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from ..integrity import crc8_atm, crc16_ccitt as crc16_ccitt_false
+
+from ..integrity import crc8_atm
+from ..integrity import crc16_ccitt as crc16_ccitt_false
 from ..targets import MemoryLayout
 
 SYNC = bytes((0xA5, 0x5A))
@@ -191,23 +195,34 @@ class MonitorCodec:
         self.layout.validate(address, len(data))
         if len(data) > self.layout.max_chunk:
             raise ValueError("load exceeds target chunk size")
-        return encode_loader_v2_command(TYPE_LOADER_V2_LOAD, transaction,
-                                        address.to_bytes(2, "big") + data)
+        return encode_loader_v2_command(
+            TYPE_LOADER_V2_LOAD, transaction, address.to_bytes(2, "big") + data
+        )
 
-    def range_command(self, command: int, transaction: int, address: int, count: int) -> bytes:
+    def range_command(
+        self, command: int, transaction: int, address: int, count: int
+    ) -> bytes:
         if command not in (TYPE_LOADER_V2_READ, TYPE_LOADER_V2_CRC):
             raise ValueError("range command must be READ or CRC")
         self.layout.validate(address, count)
         if count > self.layout.max_chunk:
             raise ValueError("range exceeds target chunk size")
-        return encode_loader_v2_command(command, transaction,
-                                        address.to_bytes(2, "big") + bytes((count,)))
+        return encode_loader_v2_command(
+            command, transaction, address.to_bytes(2, "big") + bytes((count,))
+        )
 
-    def run(self, transaction: int, address: int, mode: int, execution_id: int) -> bytes:
+    def run(
+        self, transaction: int, address: int, mode: int, execution_id: int
+    ) -> bytes:
         self.layout.validate(address, 1)
         if mode not in (LOADER_V2_RUN_CALL, LOADER_V2_RUN_JUMP):
             raise ValueError("run mode is invalid")
         if not 0 <= execution_id <= 0xFFFFFFFF:
             raise ValueError("execution ID does not fit 32 bits")
-        return encode_loader_v2_command(TYPE_LOADER_V2_RUN, transaction,
-            address.to_bytes(2, "big") + bytes((mode,)) + execution_id.to_bytes(4, "big"))
+        return encode_loader_v2_command(
+            TYPE_LOADER_V2_RUN,
+            transaction,
+            address.to_bytes(2, "big")
+            + bytes((mode,))
+            + execution_id.to_bytes(4, "big"),
+        )

@@ -39,7 +39,7 @@ class AddressRange:
 class MemoryLayout:
     """Host-authorized windows; reserved RAM is excluded even within a window."""
 
-    writable: tuple[AddressRange, ...]
+    windows: tuple[AddressRange, ...]
     reserved: tuple[AddressRange, ...] = ()
     address_bits: int = 16
     max_chunk: int = 32
@@ -47,22 +47,29 @@ class MemoryLayout:
     def __post_init__(self):
         if self.address_bits not in (16, 32) or not 1 <= self.max_chunk <= 65535:
             raise ValueError("invalid address width or chunk size")
-        if not self.writable:
+        if not self.windows:
             raise ValueError("at least one memory window is required")
-        for item in self.writable + self.reserved:
+        for item in self.windows + self.reserved:
             if item.end > 1 << self.address_bits:
                 raise ValueError("range exceeds the address space")
-        for left, right in zip(sorted(self.writable, key=lambda r: r.start),
-                               sorted(self.writable, key=lambda r: r.start)[1:]):
+        for left, right in zip(
+            sorted(self.windows, key=lambda r: r.start),
+            sorted(self.windows, key=lambda r: r.start)[1:],
+        ):
             if left.end > right.start:
                 raise ValueError("memory windows overlap")
 
     def validate(self, address: int, length: int) -> None:
         if not isinstance(address, int) or not isinstance(length, int) or length <= 0:
-            raise ValueError("memory operation requires an integer address and positive length")
-        if not any(region.contains(address, length) for region in self.writable):
+            raise ValueError(
+                "memory operation requires an integer address and positive length"
+            )
+        if not any(region.contains(address, length) for region in self.windows):
             raise ValueError("operation is outside the authorized memory window")
-        if any(address < region.end and address + length > region.start for region in self.reserved):
+        if any(
+            address < region.end and address + length > region.start
+            for region in self.reserved
+        ):
             raise ValueError("operation overlaps reserved memory")
 
     def chunks(self, address: int, length: int):
@@ -83,7 +90,9 @@ class TargetInfo:
 
     def require(self, capability: Capability) -> None:
         if capability not in self.capabilities:
-            raise UnsupportedOperation(f"{self.target} does not support {capability.value}")
+            raise UnsupportedOperation(
+                f"{self.target} does not support {capability.value}"
+            )
 
 
 @dataclass(frozen=True)
@@ -111,4 +120,10 @@ class FileTarget(Protocol):
     def put(self, local, remote: str, chunk_size: int = 512): ...
     def get(self, remote: str, local, chunk_size: int = 512): ...
     def remove(self, remote: str) -> None: ...
-    def execute(self, remote: str, arguments: str = "", execution_id: int | None = None, **kwargs): ...
+    def execute(
+        self,
+        remote: str,
+        arguments: str = "",
+        execution_id: int | None = None,
+        **kwargs,
+    ): ...

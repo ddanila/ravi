@@ -10,7 +10,9 @@ import struct
 from dataclasses import dataclass
 from enum import IntEnum
 
-from ..integrity import crc16_ccitt, crc32 as file_crc32
+from ..integrity import crc16_ccitt, crc32
+
+file_crc32 = crc32  # noqa: F401 - public compatibility name
 
 VERSION = 1
 MAX_PAYLOAD = 4096

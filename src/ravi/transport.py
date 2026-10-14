@@ -51,7 +51,9 @@ _BAUDS = {
 }
 
 
-def write_fd(fd: int, data: bytes, deadline: float, *, poll_interval: float | None = None) -> None:
+def write_fd(
+    fd: int, data: bytes, deadline: float, *, poll_interval: float | None = None
+) -> None:
     """Write all bytes under one caller-owned absolute monotonic deadline."""
     view = memoryview(data)
     while view:
@@ -76,7 +78,9 @@ def read_fd(fd: int, size: int, timeout: float) -> bytes:
     deadline = time.monotonic() + max(timeout, 0.0)
     while True:
         try:
-            readable, _, _ = select.select([fd], [], [], max(0.0, deadline - time.monotonic()))
+            readable, _, _ = select.select(
+                [fd], [], [], max(0.0, deadline - time.monotonic())
+            )
             if not readable:
                 return b""
             data = os.read(fd, size)
@@ -95,6 +99,8 @@ class FDTransport(Transport):
     def __init__(self, fd: int, *, duplicate: bool = True, write_timeout: float = 5.0):
         if write_timeout <= 0:
             raise ValueError("write timeout must be positive")
+        if os.get_blocking(fd):
+            raise ValueError("FDTransport requires a nonblocking descriptor")
         self.fd = os.dup(fd) if duplicate else fd
         self.owned = duplicate
         self.closed = False

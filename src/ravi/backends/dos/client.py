@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from ...execution import CompletionDeadline
 from ...protocols.dos_v1 import (
     Command,
     Frame,
@@ -25,9 +26,8 @@ from ...protocols.dos_v1 import (
     tlv_text,
     tlv_u32,
 )
-from ...transport import Transport, TransportError
-from ...execution import CompletionDeadline
 from ...targets import Capability, TargetInfo
+from ...transport import Transport, TransportError
 
 
 class RemoteError(RuntimeError):
@@ -68,10 +68,18 @@ class ExecResult:
 
 class Client:
     target_info = TargetInfo(
-        "dos", "dos-v1", frozenset({
-            Capability.FILE_READ, Capability.FILE_WRITE, Capability.FILE_LIST,
-            Capability.FILE_REMOVE, Capability.PROCESS_EXEC,
-        }), replay_scope="bounded-agent-ram-cache",
+        "dos",
+        "dos-v1",
+        frozenset(
+            {
+                Capability.FILE_READ,
+                Capability.FILE_WRITE,
+                Capability.FILE_LIST,
+                Capability.FILE_REMOVE,
+                Capability.PROCESS_EXEC,
+            }
+        ),
+        replay_scope="bounded-agent-ram-cache",
     )
 
     def __init__(
@@ -175,9 +183,9 @@ class Client:
                     return values
             completion.check_retry()
         raise TransportError(
-                    "EXEC completion timed out after STARTED; outcome unknown; "
-                    "request was not retransmitted"
-                )
+            "EXEC completion timed out after STARTED; outcome unknown; "
+            "request was not retransmitted"
+        )
         raise TransportError(
             f"{command.name} timed out after {self.retries + 1} attempts"
         )

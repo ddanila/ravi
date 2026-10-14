@@ -3,6 +3,7 @@
 Adapters supply frame transmission and reception. Juku supplies its solicited
 symbol link; raw monitor targets use ordinary ordered byte transports.
 """
+
 import time
 
 from .protocols import monitor_v2 as protocol
@@ -206,4 +207,3 @@ class MonitorTransactions:
                 f"!= 0x{record_type:02X}"
             )
         return detail, data, cursor, attempts
-
