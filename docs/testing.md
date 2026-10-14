@@ -7,8 +7,15 @@ reply deadlines, capability/range rejection, replay/uncertain outcomes, and
 real POSIX PTY/socket transport ownership, EOF and partial-I/O behavior.
 
 Library CI checks Python 3.10 and 3.12 and installs the built wheel into a fresh
-virtual environment outside the source checkout. Product compatibility remains
-covered by actual consumer integration, not just the synthetic peer:
+virtual environment outside the source checkout. The product compatibility workflow checks out pinned consumer harnesses and
+explicitly replaces each consumer's `third_party/ravi` checkout with the candidate
+library commit. It runs DOS native/8086 agent integration and Juku T28/T34 ROM
+integration. Backend-only changes select that product; shared or unknown changes
+select both; prose-only changes skip both. Consumer revisions are fixed in the
+workflow so unrelated consumer changes cannot silently alter a library result.
+Advance those harness pins deliberately when product tests evolve.
+
+The consumers retain their full regression gates:
 
 | Consumer | Gate |
 | --- | --- |
@@ -38,3 +45,21 @@ CI skips expensive product checks for documentation-only changes. A RAVI pin
 change selects DOS native/actual-agent tests or the Juku consumers respectively;
 it does not require unrelated analog/LVS work. Unknown changes remain
 conservative. Consumer firmware and physical evidence stay in their own repos.
+
+
+## Extraction evidence (2026-10-14)
+
+The implementation revision `c07e38c` passed 27 library behavior tests and the
+synthetic extension example, plus isolated wheel installation. Hosted library
+CI passed on Python 3.10 and 3.12. Three additional selector tests cover the
+product compatibility CI policy.
+
+DOSRAVI `1cd4676` passed its 51-test native suite, C protocol tests, Ruff,
+cppcheck, real DOSBox-X agent integration on both 8086 and 80186, and isolated
+installed-CLI verification. Jukuravi `9e8059b7` passed T28 (including the shared
+memory API) and T34 locally; the consumer workflow retains all T36 groups and
+the older ROM regressions. Full hosted results are visible in the Actions tabs
+of all three repositories. None of these results adds physical qualification.
+
+Both consumers pin the implementation revision; subsequent library CI and prose
+changes need no consumer pin bump because they do not alter installed code.

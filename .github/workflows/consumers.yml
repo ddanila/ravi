@@ -1,0 +1,79 @@
+name: Product compatibility
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      dos: ${{ steps.select.outputs.dos }}
+      juku: ${{ steps.select.outputs.juku }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 ci/select_consumers.py
+  dos:
+    needs: changes
+    if: needs.changes.outputs.dos == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          repository: ddanila/dosravi
+          ref: 1cd4676bb5678f0bbeab6037a077e5dda8c90215
+          path: consumer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the candidate inside the consumer dependency path
+        working-directory: consumer
+        run: |
+          git submodule update --init third_party/ravi
+          git -C third_party/ravi fetch "$GITHUB_WORKSPACE/candidate" HEAD
+          git -C third_party/ravi checkout --detach FETCH_HEAD
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bcc bin86 elks-libc cppcheck nasm dosbox-x
+          python3 -m pip install ruff hypothesis
+          make check
+          DOSRAVI_TEST_CPUS=8086 make dos-test
+  juku:
+    needs: changes
+    if: needs.changes.outputs.juku == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          repository: ddanila/8080-cosim
+          ref: 9e8059b751c2dcb8011379555cf98b8b75c4441f
+          path: consumer
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the candidate inside the consumer dependency path
+        working-directory: consumer
+        run: |
+          git submodule update --init third_party/ravi third_party/dac-emulation third_party/zmac third_party/juku-common
+          git -C third_party/ravi fetch "$GITHUB_WORKSPACE/candidate" HEAD
+          git -C third_party/ravi checkout --detach FETCH_HEAD
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential nasm
+          ./sync/jukuravi_t28_check.sh
+          ./sync/jukuravi_t34_check.sh
