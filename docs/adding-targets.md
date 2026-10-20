@@ -47,10 +47,12 @@ Attach can reject a profile even when its CPU and UART seem compatible.
 
 ## Robotron 1715 preparation
 
-No 1715 backend or ROM is claimed here. Its memory map, decode, reset vector,
-SIO addresses/control sequence, baud clock and V.24 signal routing must first
-be established for the actual board revision. The shared host interfaces can
-then be used without changing DOSRAVI or Juku's board constants.
+An experimental [plain-1715 stock-ROM bootstrap](robotron1715.md) now exists.
+It uses the published R1715BT V.24 routine and includes a RAM/serial smoke
+payload. It does not implement the memory/CALL monitor interface or a new
+diagnostic ROM. Physical qualification of MB001, including cold startup with
+the separate floppy controller absent, remains pending. A full monitor still
+needs its own board profile and firmware acceptance fixture.
 
 An early DTR/control-line indication is a reasonable board-level experiment:
 it can show progress before framed serial traffic works, provided the chosen

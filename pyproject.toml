@@ -14,6 +14,9 @@ authors = [{name = "Danila Sukharev"}]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"ravi.backends.robotron1715" = ["smoke.asm", "smoke.bin"]
+
 [project.optional-dependencies]
 test = ["ruff>=0.8"]
 

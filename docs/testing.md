@@ -25,6 +25,13 @@ The consumers retain their full regression gates:
 Firmware build checks compare generated Juku ROMs to the checked-in bytes.
 These tests do not add physical qualification for either machine or for a 1715.
 
+The [plain-1715 bootstrap procedure](robotron1715.md) includes an optional
+historical-ROM Z80 instruction fixture. On 2026-10-20, all 43 library tests
+passed with that fixture enabled, including the CLI/logging path and injected
+RAM failure. The smoke payload rebuild matched its shipped binary. An isolated
+wheel installation includes the CLI, assembly source and binary. This does not
+qualify physical MB001 or cold boot without its floppy controller.
+
 ## Updating a consumer pin
 
 1. Test the candidate library, including the affected consumer against that

@@ -1,6 +1,6 @@
 # Protocol compatibility
 
-This extraction does not change either wire format or the qualified firmware
+This extraction does not change either existing wire format or the qualified firmware
 bytes. `0.1.0` is the Python package version; it is not a shared wire version.
 
 ## DOS v1
@@ -49,3 +49,12 @@ Reuse a codec only when the firmware really implements that dialect. Add new
 optional capabilities without making unsupported operations appear available.
 A wire-incompatible change requires another versioned codec/backend and its
 own cross-language fixtures; retain the original codecs for existing targets.
+
+## Plain PC1715 stock ROM
+
+`ravi.backends.robotron1715.boot` is a separate, experimental bootstrap
+protocol: `11 11` / `12 12`, little-endian LOAD (`0A`) and jump (`AA`).
+It reuses the transport layer but does not advertise `MemoryTarget` or monitor
+API v2 capabilities. There is no ROM readback, checksum, CALL result or replay
+protection. See [the bench procedure](robotron1715.md) for memory restrictions,
+serial framing and the distinction between sent bytes and verified execution.

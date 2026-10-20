@@ -34,6 +34,22 @@ Read [architecture and ownership](docs/architecture.md),
 [testing and dependency updates](docs/testing.md).
 The [acceptance plan](docs/refactor-plan.md) records the extraction scope.
 
+## Plain Robotron PC1715 stock-ROM bootstrap
+
+The experimental [1715 bench procedure](docs/robotron1715.md) provides a V.24
+handshake, raw binary upload/jump and a bundled Z80 RAM/serial smoke test:
+
+```sh
+python3 -m ravi.backends.robotron1715 --port /dev/ttyUSB0 \
+  --log-dir sessions/MB001-first-smoke smoke
+```
+
+Connect the three-wire RS-232 cable described in that procedure and reset the
+board while the command waits. No EPROM replacement or specimen ROM dump is
+required. This is a separate stock-ROM protocol, not monitor API v2 or a full
+Robotron port of Jukuravi. The published ROM's loader instructions pass the
+optional Z80 harness; physical MB001 qualification remains pending.
+
 ## Provenance
 
 The DOS v1 codec, transport and client were extracted from

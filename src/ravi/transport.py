@@ -126,11 +126,15 @@ class FDTransport(Transport):
 
 
 class SerialTransport(Transport):
-    """Raw 8N1 POSIX serial transport with no hardware flow control."""
+    """Raw eight-bit POSIX serial transport without software/hardware flow control."""
 
-    def __init__(self, device: str, baud: int = 38400):
+    def __init__(
+        self, device: str, baud: int = 38400, *, parity: str = "N", stop_bits: int = 1
+    ):
         if baud not in _BAUDS:
             raise ValueError(f"unsupported baud {baud}")
+        if parity not in ("N", "O", "E") or stop_bits not in (1, 2):
+            raise ValueError("parity must be N/O/E and stop_bits must be 1/2")
         self.fd = os.open(device, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         self.original_attrs = None
         try:
@@ -139,6 +143,12 @@ class SerialTransport(Transport):
             attrs[0] = 0
             attrs[1] = 0
             attrs[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
+            if parity != "N":
+                attrs[2] |= termios.PARENB
+                if parity == "O":
+                    attrs[2] |= termios.PARODD
+            if stop_bits == 2:
+                attrs[2] |= termios.CSTOPB
             attrs[3] = 0
             attrs[4] = _BAUDS[baud]
             attrs[5] = _BAUDS[baud]

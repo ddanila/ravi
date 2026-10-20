@@ -18,6 +18,34 @@ from ravi.transport import (
 
 
 class SerialTransportTests(unittest.TestCase):
+    def test_odd_parity_two_stop_bits_requested_without_flow_control(self):
+        # PTYs may silently drop PARENB; inspect the actual tcsetattr request.
+        master, slave = pty.openpty()
+        try:
+            original = termios.tcgetattr(slave)
+            with patch("ravi.transport.termios.tcsetattr") as configure:
+                transport = SerialTransport(
+                    os.ttyname(slave), 9600, parity="O", stop_bits=2
+                )
+                attrs = configure.call_args.args[2]
+                self.assertEqual(attrs[0], 0)  # includes IXON/IXOFF/ISTRIP off
+                flags = termios.CS8 | termios.CREAD | termios.CLOCAL
+                flags |= termios.PARENB | termios.PARODD | termios.CSTOPB
+                self.assertEqual(attrs[2], flags)
+                self.assertEqual(attrs[4:6], [termios.B9600] * 2)
+                transport.close()
+                self.assertEqual(configure.call_args.args[2], original)
+        finally:
+            os.close(master)
+            os.close(slave)
+
+    def test_bad_format_rejected_before_open(self):
+        with patch("ravi.transport.os.open") as opened:
+            for options in ({"parity": "x"}, {"stop_bits": 1.5}):
+                with self.assertRaises(ValueError):
+                    SerialTransport("unused", **options)
+            opened.assert_not_called()
+
     def test_raw_8n1_configuration_and_restore(self) -> None:
         master, slave = pty.openpty()
         try:

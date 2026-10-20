@@ -22,6 +22,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m pip install -e '.[test]' build
+      - name: Install smoke-payload assembler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends z80asm
       - run: make check
       - name: Isolated wheel installation
         run: |
@@ -31,3 +33,5 @@ jobs:
           cp examples/memory_monitor.py "$RUNNER_TEMP/example.py"
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/ravi-wheel/bin/python" example.py
+          "$RUNNER_TEMP/ravi-wheel/bin/python" -m ravi.backends.robotron1715 --help
+          "$RUNNER_TEMP/ravi-wheel/bin/python" -c "from importlib.resources import files; p = files('ravi.backends.robotron1715'); assert p.joinpath('smoke.bin').read_bytes(); assert p.joinpath('smoke.asm').read_text()"
