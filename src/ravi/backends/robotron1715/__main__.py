@@ -87,7 +87,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             transport = LoggedTransport(serial, rx, tx)
             boot = StockBoot(transport, byte_delay=args.byte_delay)
-            print("Waiting for stock ROM; press RESET on the board.", flush=True)
+            print(
+                "Waiting for stock ROM; power on for a fresh loader session.",
+                flush=True,
+            )
             boot.handshake(args.timeout)
             print("ROM handshake received: 12 12.", flush=True)
             if image is not None:

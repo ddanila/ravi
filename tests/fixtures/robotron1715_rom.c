@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -32,10 +33,23 @@ int main(int argc, char **argv) {
         unsigned addr = Z80_GET_ADDR(pins);
         if (pins & Z80_MREQ) {
             if (pins & Z80_RD) {
-                unsigned char value = mem[addr];
-                if (fault && addr == 0x8055) value ^= 1;
+                unsigned effective = addr;
+                if (fault && !strcmp(argv[2], "alias") && (addr & 0xff00) == 0x8000)
+                    effective &= ~1u;
+                unsigned char value = mem[effective];
+                if (fault && addr == 0x8055) {
+                    if (!strcmp(argv[2], "fault")) value ^= 1;
+                    if (!strcmp(argv[2], "stuck-low")) value &= ~4u;
+                    if (!strcmp(argv[2], "stuck-high")) value |= 4;
+                }
                 Z80_SET_DATA(pins, value);
-            } else if (pins & Z80_WR) mem[addr] = Z80_GET_DATA(pins);
+            } else if (pins & Z80_WR) {
+                unsigned effective = addr;
+                if (fault && !strcmp(argv[2], "alias") && (addr & 0xff00) == 0x8000)
+                    effective &= ~1u;
+                if (!(fault && !strcmp(argv[2], "write-lost") && addr == 0x8055))
+                    mem[effective] = Z80_GET_DATA(pins);
+            }
         } else if (pins & Z80_IORQ) {
             unsigned port = addr & 255;
             if (pins & Z80_RD) {

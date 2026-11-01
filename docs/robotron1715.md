@@ -1,10 +1,10 @@
 # Plain PC1715 stock-ROM bootstrap / MB001 bench procedure
 
-Status, 2026-10-20: prepared and tested against the historical ROM's loader
-instructions. **Not yet tested on physical MB001.** This is the plain 64 KB
-PC1715, not the 1715M/S550 profile in DAC. No specimen EPROM dump or replacement
-is a prerequisite. Use the standard ROM as the working assumption; investigate
-its identity/integrity only if observations justify doing so.
+Status, 2026-11-01: **MB001 stock-ROM handshake and serial-loaded code execution
+verified on hardware** with a Prolific PL2303. The original smoke payload took
+its RAM-failure path for `8000h..80FFh`; this does not identify a failed RAM chip.
+The recoverable monitor below is emulator-tested and ready for its first board
+run. This target is the plain 64 KB PC1715, not the 1715M/S550 profile in DAC.
 
 ## Cable and serial setup
 
@@ -32,7 +32,7 @@ Nominal speed: 9600 baud. The ROM writes WR4=49h: x16, eight-bit data configured
 in WR3/WR5, odd parity, **1.5 stop bits**. POSIX termios cannot express 8O1.5.
 The tool deliberately requests **8O2** on the host, giving additional transmit
 idle time. Reception of the ROM's 1.5-stop-bit response depends on the adapter;
-this choice is pending physical validation. `--stop-bits 1` is an explicit
+this combination succeeded on MB001 with the PL2303 on 2026-11-01. `--stop-bits 1` is an explicit
 alternative for an adapter that cannot receive that response in 8O2. Neither
 setting changes the Robotron. Record the actual setting in the session.
 
@@ -43,11 +43,11 @@ From this repository:
 ```sh
 python3 -m pip install -e .
 
-# Handshake only. Press board RESET while this waits.
+# Handshake only. Power on while this waits.
 python3 -m ravi.backends.robotron1715 --port /dev/ttyUSB0 \
   --log-dir sessions/MB001-probe-01 probe
 
-# Reset again: the probe leaves the ROM waiting for commands.
+# Power-cycle again: the probe leaves the ROM waiting for commands.
 python3 -m ravi.backends.robotron1715 --port /dev/ttyUSB0 \
   --log-dir sessions/MB001-smoke-01 smoke
 
@@ -65,8 +65,8 @@ during preparation.
 Defaults: 30-second handshake deadline and 2 ms additional delay after each
 uploaded byte. `--timeout`, `--byte-delay`, `--baud` and `--stop-bits` precede
 the subcommand. Byte pacing is conservative, not a qualified throughput limit.
-After timeout, interrupted upload, disconnect or unexpected output, reset and
-start a new session. There is no automatic LOAD/EXEC replay.
+After timeout, interrupted upload, disconnect or unexpected output, power-cycle and
+start a new stock-loader session. The onboard button is not the CPU reset. There is no automatic LOAD/EXEC replay.
 
 `probe` succeeds only on `12 12`. `upload` success means bytes were sent after
 that handshake, **not** that RAM contents or execution were verified.
@@ -161,3 +161,84 @@ Next physical evidence: MB001 reaches `12 12` with its actual attached hardware;
 record adapter/framing settings; run the smoke test and retain its logs. Until
 then this remains experimental. A full resident memory/CALL monitor, custom
 diagnostic ROM and RAM-independent DTR milestones are separate work.
+
+## Recoverable serial diagnostic
+
+Load the 720-byte `monitor.bin` at `4000h`. All feedback and commands use the
+same serial cable; no screen, keyboard or logic analyzer is required. It keeps
+interrupts disabled and retains the stock SIO setup. A normal test failure
+reports details and returns to `READY`, rather than HALTing.
+
+```sh
+# Board initially OFF. Run this, then power on when the host is waiting.
+PYTHONPATH=src python3 -m ravi.backends.robotron1715.monitor_cli \
+  --port /dev/ttyUSB0 --log-dir sessions/MB001-diag-01 deploy \
+  --reference-rom /path/to/verified-2048-byte-ROM.bin
+
+# Subsequent commands: leave the board powered, no ROM handshake or restart.
+PYTHONPATH=src python3 -m ravi.backends.robotron1715.monitor_cli \
+  --port /dev/ttyUSB0 --log-dir sessions/MB001-page-81 test 81
+PYTHONPATH=src python3 -m ravi.backends.robotron1715.monitor_cli \
+  --port /dev/ttyUSB0 --log-dir sessions/MB001-read-8000 read 8000 256
+```
+
+`deploy` handshakes with the stock ROM, uploads/executes the monitor, then reads
+back **every uploaded code byte** and requires an exact match before any tests.
+It saves the low page `0000h..00FFh` and optionally compares it with the reference
+ROM, runs the same RAM test on page `00` and page `80`, verifies the low page
+was restored, and verifies that the monitor still answers afterwards. The
+reference file is a comparison, not a ROM replacement.
+
+The boot ROM copies itself to RAM and disables its overlay; the low page is
+therefore an especially useful control area. Its startup clears memory but
+does not perform a real RAM test. A working low page does not prove page `80`
+is good. Test outcomes are separate from command success in `result.json`:
+`success` means the requested exchange completed; `all_tested_pages_passed`
+and individual `passed` fields describe RAM results.
+
+Each page test saves 256 bytes, fills and verifies twenty patterns (00, FF,
+55, AA, walking ones and walking zeros), then an address-byte pattern, and
+attempts to restore the saved page on both pass and failure. It stops at the
+first mismatch. Failure lines have this form:
+
+```text
+TEST 80
+FAIL P 8055 FF FB 04 FB
+READY
+```
+
+Fields: phase (`P` uniform pattern or `A` address pattern), address, expected
+byte, first actual byte, XOR difference, second immediate read. In this example
+D2 read low when expected high. These results localize an effect, not a chip.
+Failed storage or physical aliasing can prevent perfect restoration.
+
+Memory layout: code `4000h..42CFh`; backup buffer `4C00h..4CFFh`; variables at
+`4E00h`; stack starts at `0990h`, in the already-used boot-stack area. Page tests
+reject `08..0F` and `40..4F`. They allow the low ROM-copy pages `00..07` because
+execution is elsewhere and interrupts are disabled. Physical address aliasing
+can bypass software protection; CPU/monitor corruption still needs a restart.
+This is not a full RAM-retention/refresh test or a hardware watchdog.
+
+The host also supports `write ADDRESS FILE` for a 1–256-byte chunk within one
+page and `call ADDRESS`. Writes below `1000h` and within `4000h..4FFFh` are
+rejected. The monitor receives the complete chunk into scratch memory before
+writing, then returns actual memory readback; the host verifies it. A callable
+payload can `RET` to the monitor, retaining serial recovery. It must preserve
+the stack and serial configuration. A payload that never returns takes control
+and is not automatically recoverable. The resident monitor itself is protected
+from overwrite; replacing it requires a fresh loader session.
+
+Wire commands: `?`; `R` plus little-endian address and count; `T` plus page;
+`W` plus address/count/data; `G` plus address. Count zero means 256. All responses
+end with `READY\r\n`. Invalid commands/ranges and incomplete parameters return
+an error. Incomplete writes time out before committing; idle reception waits
+for commands, and transmitter polling is bounded. There is no automatic replay
+on a lost response. These are binary commands: use the host tool, not a terminal
+that appends newline characters.
+
+Validation uses the actual assembled monitor and historical ROM loader on the
+chips Z80 core: healthy RAM, read-bit inversion, stuck-low/high D2, lost writes,
+A0 aliasing, continued commands after failures, control-page restoration,
+protected ranges, partial-write timeout, upload/readback and call/return. The
+original smoke test is also checked on healthy/faulty RAM. This is a byte-level
+SIO model, not electrical/baud-rate validation of the new monitor on MB001.

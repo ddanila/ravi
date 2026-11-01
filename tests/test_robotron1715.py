@@ -20,6 +20,8 @@ from ravi.backends.robotron1715.boot import (
     load_record,
     run_record,
 )
+from ravi.backends.robotron1715.monitor import IDENTITY, Monitor
+from ravi.backends.robotron1715.monitor_cli import main as monitor_main
 from ravi.transport import (
     LoopbackTransport,
     Transport,
@@ -133,17 +135,23 @@ class BootTests(unittest.TestCase):
     @unittest.skipUnless(
         shutil.which("z80asm"), "optional z80asm reproducibility check"
     )
-    def test_smoke_binary_matches_source(self):
+    def test_payload_binaries_match_source(self):
         resource = files("ravi.backends.robotron1715")
         with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / "smoke.bin"
-            subprocess.run(
-                ["z80asm", "-o", str(output), str(resource.joinpath("smoke.asm"))],
-                check=True,
-            )
-            self.assertEqual(
-                output.read_bytes(), resource.joinpath("smoke.bin").read_bytes()
-            )
+            for name in ("smoke", "monitor"):
+                output = Path(tmp) / f"{name}.bin"
+                subprocess.run(
+                    [
+                        "z80asm",
+                        "-o",
+                        str(output),
+                        str(resource.joinpath(f"{name}.asm")),
+                    ],
+                    check=True,
+                )
+                self.assertEqual(
+                    output.read_bytes(), resource.joinpath(f"{name}.bin").read_bytes()
+                )
 
 
 class ProcessTransport(Transport):
@@ -200,7 +208,11 @@ class HistoricalRomTests(unittest.TestCase):
 
     def connect(self, fault=False):
         process = subprocess.Popen(
-            [str(self.binary), str(self.rom), *(["fault"] if fault else [])],
+            [
+                str(self.binary),
+                str(self.rom),
+                *([fault if isinstance(fault, str) else "fault"] if fault else []),
+            ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
@@ -262,3 +274,118 @@ class HistoricalRomTests(unittest.TestCase):
                 (logs / "rx.bin").read_bytes(), b"\x12\x12" + READY + bytes(range(256))
             )
             self.assertTrue((logs / "tx.bin").read_bytes().endswith(bytes(range(256))))
+
+    def start_monitor(self, fault=False):
+        boot, transport = self.connect(fault=fault)
+        image = files("ravi.backends.robotron1715").joinpath("monitor.bin").read_bytes()
+        self.assertLess(len(image), 0xC00)
+        boot.upload(0x4000, image)
+        boot.execute(0x4000)
+        monitor = Monitor(transport, byte_delay=0)
+        self.assertEqual(monitor.response(), [IDENTITY])
+        actual = b"".join(
+            monitor.read_memory(0x4000 + i, min(256, len(image) - i))
+            for i in range(0, len(image), 256)
+        )
+        self.assertEqual(actual, image)
+        return monitor, transport
+
+    def test_monitor_healthy_control_page_restore_and_repeated_commands(self):
+        monitor, _ = self.start_monitor()
+        expected = self.rom.read_bytes()[:256]
+        self.assertEqual(monitor.read_memory(0, 256), expected)
+        self.assertEqual(monitor.test_page(0), {"page": 0, "passed": True})
+        self.assertEqual(monitor.read_memory(0, 256), expected)
+        original = monitor.read_memory(0x8000, 256)
+        self.assertTrue(monitor.test_page(0x80)["passed"])
+        self.assertEqual(monitor.read_memory(0x8000, 256), original)
+        monitor.identify()
+        monitor.write_memory(0x2000, bytes(range(256)))
+        self.assertEqual(monitor.read_memory(0x2000, 256), bytes(range(256)))
+        monitor.write_memory(0x2000, b"\xc9")
+        self.assertEqual(monitor.call(0x2000), [])
+        monitor.identify()
+
+    def test_monitor_fault_details_and_recovery(self):
+        cases = [
+            ("fault", "P", 0x8055, 0, 1),
+            ("stuck-low", "P", 0x8055, 255, 251),
+            ("stuck-high", "P", 0x8055, 0, 4),
+            ("write-lost", "P", 0x8055, 255, 0),
+            ("alias", "A", 0x8000, 0, 1),
+        ]
+        for fault, phase, address, expected, actual in cases:
+            with self.subTest(fault=fault):
+                monitor, _ = self.start_monitor(fault=fault)
+                self.assertTrue(monitor.test_page(0)["passed"])
+                failure = monitor.test_page(0x80)
+                self.assertEqual(
+                    failure,
+                    {
+                        "page": 0x80,
+                        "passed": False,
+                        "phase": phase,
+                        "address": address,
+                        "expected": expected,
+                        "actual": actual,
+                        "xor": expected ^ actual,
+                        "second_read": actual,
+                    },
+                )
+                monitor.identify()
+                self.assertTrue(monitor.test_page(0)["passed"])
+                monitor.identify()
+
+    def test_monitor_firmware_protection_and_truncated_write_timeout(self):
+        monitor, transport = self.start_monitor()
+        for request in (b"T\x09", b"T\x40", b"W\x00\x40\x01", b"G\x00\x40"):
+            transport.write(request)
+            self.assertEqual(monitor.response(), [b"ERR RANGE"])
+        original = monitor.read_memory(0x2000, 4)
+        transport.write(b"W\x00\x20\x04\xaa")
+        self.assertEqual(monitor.response(timeout=30), [b"ERR TIMEOUT"])
+        monitor.identify()
+        self.assertEqual(monitor.read_memory(0x2000, 4), original)
+
+    def test_monitor_cli_deploy_verifies_image_and_control_page(self):
+        process = subprocess.Popen(
+            [str(self.binary), str(self.rom)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        transport = ProcessTransport(process)
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch(
+                "ravi.backends.robotron1715.monitor_cli.SerialTransport",
+                return_value=transport,
+            ),
+            patch("sys.stdout", new_callable=io.StringIO),
+        ):
+            log = Path(tmp) / "log"
+            code = monitor_main(
+                [
+                    "--port",
+                    "emulated",
+                    "--byte-delay",
+                    "0",
+                    "--log-dir",
+                    str(log),
+                    "deploy",
+                    "--reference-rom",
+                    str(self.rom),
+                ]
+            )
+            self.assertEqual(code, 0)
+            result = json.loads((log / "result.json").read_text())
+            for key in (
+                "success",
+                "low_page_matches_reference",
+                "low_page_restored",
+                "all_tested_pages_passed",
+                "monitor_responsive_after_tests",
+            ):
+                self.assertTrue(result[key], key)
+            self.assertEqual(
+                (log / "payload.bin").read_bytes(), (log / "readback.bin").read_bytes()
+            )
