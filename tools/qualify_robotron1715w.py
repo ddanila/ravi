@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run actual W1 firmware through a pinned dac-emulation checkout, never serial."""
+"""Run actual W1/W2 firmware through a pinned dac-emulation checkout, never serial."""
 
 import argparse
 import hashlib
@@ -78,7 +78,17 @@ def main():
         "common/cpu/z80.c",
         "third_party/cpu/chips/z80.h",
     ]
+    metadata = json.loads(
+        (ROOT / "src/ravi/backends/robotron1715w/rom.json").read_text()
+    )
     report = {
+        "firmware": {
+            key: metadata[key]
+            for key in ("protocol", "build_id", "size", "used", "free_bytes", "crc16")
+        },
+        "baseline_sha256": hashlib.sha256(
+            (ROOT / "src/ravi/backends/robotron1715w/baseline/rom.bin").read_bytes()
+        ).hexdigest(),
         "passed": proc.returncode == 0,
         "emulator_commit": head,
         "emulator_sources": {

@@ -38,3 +38,4 @@ jobs:
           "$RUNNER_TEMP/ravi-wheel/bin/python" -m ravi.backends.robotron1715w --help
           "$RUNNER_TEMP/ravi-wheel/bin/python" -c "from importlib.resources import files; p = files('ravi.backends.robotron1715w'); assert len(p.joinpath('rom.bin').read_bytes()) == 2048; assert p.joinpath('helper.asm').read_text()"
           "$RUNNER_TEMP/ravi-wheel/bin/python" -c "from ravi.backends.robotron1715w.diagnostic import build_diagnostic; assert build_diagnostic('data-lines', 0xf000, 0x8000, 1)[0]; assert build_diagnostic('ram-patterns', 0xf000, 0x8000, 256)[0]; assert build_diagnostic('address-lines', 0xf000, 0x8000, 512)[0]"
+          "$RUNNER_TEMP/ravi-wheel/bin/python" -c "from ravi.backends.robotron1715w.build import build_rom, ROOT; assert build_rom()[0] == (ROOT / 'rom.bin').read_bytes(); assert len((ROOT / 'baseline/rom.bin').read_bytes()) == 2048"

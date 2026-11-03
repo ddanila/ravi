@@ -1,4 +1,4 @@
-; MIT. Stackless RAVI W ROM, protocol W1. Generated instruction sequences
+; MIT. Stackless RAVI W ROM, protocol W2 (legacy R supported). Generated instruction sequences
 ; are explicit to allow a normal z80asm build without a macro preprocessor.
 ; Main BC=op/id, DE=bank/count, HL=address. Alternate BC=CRC16.
 ; IX=leaf return; alternate DE/HL and I are serial temporaries.
@@ -8,8 +8,80 @@
  jp returned
 cold:
  di
+ ld ix,boot_serial
+ jp configure
+boot_serial:
+ ld bc,08000h
+ ld de,1
+ ld hl,0
+ ld a,10
+ jp response
+boot_continue:
+ ld a,e
+ cp 1
+ jp z,checksum
+ cp 2
+ jr z,boot_display_marker
+ jp display_init
+boot_display_marker:
+ ld de,3
+ ld hl,0
+ ld a,10
+ jp response
+; Every ROM byte including padding and the appended CRC participates.
+checksum:
+ ld hl,0
+ ld de,0800h
+ exx
+ ld bc,0ffffh
+ exx
+checksum_loop:
+ ld a,(hl)
+ ld ix,checksum_next
+ exx
+ jp crc_byte
+checksum_next:
+ inc hl
+ dec de
+ ld a,d
+ or e
+ jr nz,checksum_loop
+ exx
+ ld a,b
+ exx
+ ld h,a
+ exx
+ ld a,c
+ exx
+ ld l,a
+ ld sp,0
+ ld a,h
+ or l
+ jr z,checksum_good
+ ld sp,1
+checksum_good:
+ ld a,b
+ cp 080h
+ jr z,checksum_boot
+ ld de,0
+ ld a,h
+ or l
+ ld a,0
+ jp z,response
+ ld a,11
+ jp failure
+checksum_boot:
+ ld de,2
+ ld a,h
+ or l
+ jr z,checksum_boot_send
+ inc d
+checksum_boot_send:
+ ld a,10
+ jp response
+
+display_init:
  xor a
- out (024h),a
  ; Clear glyph SRAM; every character is initialized by firmware.
  ld hl,02000h
  ld de,02001h
@@ -78,7 +150,13 @@ font_no_carry:
  ld bc,0
  ld de,0
  ld hl,0
- jp configure
+ add hl,sp
+ ld a,l
+ or a
+ ld a,2
+ jp z,response
+ ld a,11
+ jp response
 returned:
  ; Cooperative ABI: C=request id, A=result; caller restored ROM read bank.
  di
@@ -86,6 +164,7 @@ returned:
  ld b,0
  ld d,0
  ld hl,0
+ ld ix,return_ready
 configure:
  xor a
  out (024h),a
@@ -114,7 +193,9 @@ configure:
  out (00fh),a
  xor a
  out (00fh),a
- ; A RETURN at startup has id=0, result=0, and is not a boot identity.
+ jp (ix)
+return_ready:
+ ; Cooperative return, not a boot identity.
  ld a,2
  jp response
 idle:
@@ -183,6 +264,10 @@ cont8:
  ld a,b
  cp 049h
  jp z,identify
+ cp 056h
+ jp z,version
+ cp 04bh
+ jp z,checksum
  ld a,d
  cp 1
  jp nz,bad_range
@@ -195,6 +280,8 @@ cont8:
  cp 046h
  jp z,fill
  cp 052h
+ jp z,read
+ cp 042h
  jp z,read
  cp 057h
  jp nz,bad_op
@@ -230,8 +317,12 @@ write_loop:
  jp rx
 cont9:
  ld (hl),a
- cp (hl)
+ ; IX is disposable between RX calls. Sample RAM exactly once.
+ db 0ddh,06fh ; LD IXL,A (expected)
+ ld a,(hl)
+ db 0ddh,0bdh ; CP IXL
  jr z,write_match
+ ld b,a ; W opcode no longer needed; RX preserves this observed byte.
  ; Retain a failing address, but drain the full payload and CRC before reply.
  ld a,h
  db 0fdh,067h ; LD IYH,A
@@ -291,10 +382,11 @@ cont11:
  ld h,a
  db 0fdh,07dh ; LD A,IYL
  ld l,a
- ld e,(hl)
+ ld e,b
  ld a,7
  jp failure
 write_ok:
+ ld b,0
  xor a
  jp response
 read:
@@ -313,7 +405,11 @@ read:
  add a,e
  jp nz,bad_range
 read_range_ok:
- ; Each byte is a self-contained CRC-protected DATA reply.
+ ld a,b
+ cp 042h
+ ld a,12
+ jp z,response
+ ; Legacy R keeps per-byte fixed frames for W1 hosts.
  ld a,9
  jp response
 fill:
@@ -337,10 +433,16 @@ fill_bad:
  ld e,a
  ld a,7
  jp failure
-identify:
+version:
  ld d,0
+ ld hl,build_id
+ ld e,8
+ ld a,12
+ jp response
+identify:
+ ld d,31 ; stage markers, build ID, ROM CRC, captured faults, block reads
  ld hl,0800h
- ld e,1
+ ld e,2
  xor a
  jp response
 execute:
@@ -359,6 +461,9 @@ failure:
 response:
  ; Save status in IY low; IY otherwise disposable after command processing.
  db 0fdh,06fh ; LD IYL,A
+ ld a,b
+ cp 080h
+ jr z,response_wire
  ; Status text uses only the alternate scratch set; CRC resets below.
  db 0fdh,07dh ; LD A,IYL
  exx
@@ -410,6 +515,7 @@ response:
  and 15
  inc a
  ld (12538),a
+response_wire:
  exx
  ld bc,0ffffh
  exx
@@ -464,6 +570,12 @@ cont19:
  jp tx
 cont20:
  ld a,b
+ cp 080h
+ jp z,boot_continue
+ cp 042h
+ jr z,block_payload
+ cp 056h
+ jr z,block_payload
  cp 047h
  jr nz,not_go
  ; Wait for the entire STARTED frame to leave the shift register before
@@ -493,6 +605,20 @@ not_go:
  jp z,idle
  ld a,9
  jp response
+block_payload:
+ exx
+ ld bc,0ffffh
+ exx
+block_loop:
+ ld a,(hl)
+ ld ix,block_next
+ jp tx
+block_next:
+ inc hl
+ dec e
+ jr nz,block_loop
+ ld b,0
+ jp cont18 ; payload CRC, then idle (no automatic replay)
 ; Serial leaf routines preserve all primary registers. Timeout abandons frame.
 rx:
  exx
@@ -539,8 +665,11 @@ tx_wait:
  ld a,d
  or e
  jr nz,tx_wait
- ; Do not recursively report a dead transmitter.
+ ; A dead transmitter must not prevent the rest of cold startup.
  exx
+ ld a,b
+ cp 080h
+ jp z,boot_continue
  jp idle
 tx_ready:
  ld a,l
@@ -582,6 +711,9 @@ status6: db 31,11,28,30,0,15,28,28,25,28,0,0,0,0,0,0
 status7: db 28,11,23,0,15,28,28,25,28,0,0,0,0,0,0,0
 status8: db 12,11,14,0,13,25,23,23,11,24,14,0,0,0,0,0
 status9: db 28,15,11,14,0,0,0,0,0,0,0,0,0,0,0,0
+status10: defs 16,0
+status11: db 28,25,23,0,15,28,28,25,28,0,0,0,0,0,0,0
+status12: db 28,15,11,14,0,12,22,25,13,21,0,0,0,0,0,0
 font:
  db 0,0,0,0,0,0,0,0
  db 56,76,84,84,100,68,56,0
@@ -626,5 +758,7 @@ font:
  db 4,4,8,16,32,64,64,0
  db 0,16,16,0,16,16,0,0
  db 0,0,0,0,0,24,24,0
+build_id: defs 8,0 ; builder patches canonical SHA-256 prefix
 image_end:
- defs 2048-$,0ffh
+ defs 2046-$,0ffh
+rom_crc: dw 0 ; builder appends CRC-16/CCITT-FALSE, high byte first

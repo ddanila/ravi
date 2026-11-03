@@ -1,4 +1,4 @@
-name: W1 firmware qualification
+name: W1/W2 firmware qualification
 on:
   push:
     branches: [main]

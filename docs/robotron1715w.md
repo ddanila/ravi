@@ -1,9 +1,10 @@
-# PC1715W/M custom ROM monitor W1
+# PC1715W/M custom ROM monitor W2 (W1 compatible host)
 
-W1 is a new 2 KiB diagnostic ROM for the 2716 boot socket, not the stock S550
+W2 is the current 2 KiB diagnostic ROM for the 2716 boot socket, not the stock S550
 ROM and not the plain-PC1715 boot protocol. It starts its serial monitor without
 floppies, OS, keyboard, or a working main-RAM stack. Source and binaries are in
-`src/ravi/backends/robotron1715w/`. No PC001 hardware qualification is claimed.
+`src/ravi/backends/robotron1715w/`. The original W1 ROM is preserved under `baseline/` and remains supported by the host.
+No PC001 hardware qualification is claimed.
 
 ## Build and host setup
 
@@ -18,7 +19,10 @@ python3 -m venv .venv
 ```
 
 The builder writes a 2,048-byte image and a JSON hash/symbol map. The checked-in
-binary must reproduce byte-for-byte. Unused EPROM bytes are FF. `helper.asm` is
+binary must reproduce byte-for-byte. W2 uses 1760 bytes, followed by 286 FF
+padding bytes and a two-byte ROM CRC. Use the Python builder: raw `z80asm`
+output still contains zero fingerprint/CRC placeholders and is not the final
+EPROM image. The unchanged W1 baseline assembles directly. `helper.asm` is
 assembled at the selected address; it is not part of the EPROM image.
 The compact glyph designs are reused from DAC's original MIT diagnostic font.
 
@@ -118,8 +122,8 @@ silently reset the target or repeat an uncertain RUN.
 ## Execution and recovery ABI
 
 ROM address 0000h is cold startup. **0003h is the cooperative return vector.**
-The ROM uses CPU registers (including alternate registers, IX/IY byte registers
-and I), not main RAM or display SRAM, for protocol state. NMI must remain
+The ROM uses CPU registers (including alternate registers, IX/IY byte registers,
+I and SP as a register only), not main RAM or display SRAM, for protocol state. NMI must remain
 inactive: even a Z80 NMI pushes to a RAM stack. Maskable interrupts stay disabled.
 
 **Direct stackless RUN:** entry is in base RAM 4000h–FFFFh, with ROM visible and
@@ -150,7 +154,7 @@ stall, failed ROM/CPU or lost return mapping needs an external reset. No externa
 watchdog/reset wiring is implemented here. The default execution deadline is
 5 seconds; increase it explicitly for bounded longer snippets.
 
-## Wire protocol W1
+## Wire protocol W1/W2
 
 One outstanding request. All fields are bytes; address is little-endian.
 CRC is CRC-16/CCITT-FALSE (1021h polynomial, FFFFh initial, no reflection/xorout),
@@ -162,23 +166,28 @@ Transaction IDs 1–255 correlate requests; 0 is reserved for unsolicited startu
 
 | Op | Header value | Effect |
 | --- | --- | --- |
-| `I` | ignored | OK: bank=0, address=0800h, value=1 (W1) |
+| `I` | ignored | W1: OK, bank=0, address=0800h, value=1; W2: bank=1Fh capability flags, address=0800h, value=2 |
+| `V` | ignored | W2: BLOCK containing the eight-byte build fingerprint |
+| `K` | ignored | W2: full-ROM CRC; OK/residue 0 or ROM_BAD/nonzero residue in address |
+| `B` | count 1–64 | W2: one header-protected block reply |
 | `R` | count 1–64 | One DATA reply per byte, ascending address |
 | `W` | count 1–64 | Receive `count` data bytes followed by a separate CRC16 |
 | `F` | fill byte | Fill and verify one page; address must be page-aligned |
 | `G` | ignored | STARTED, jump to address, cooperative RETURN |
 
-Except I, direct commands require bank=1 and address>=4000h. Blocks must not
+Memory commands require bank=1 and address>=4000h; I/V/K ignore those request fields. Blocks must not
 wrap past FFFFh. A valid W header authorizes streaming writes immediately;
 failed/truncated payloads may leave **partial or complete unverified writes**.
 A failed payload CRC is not a rollback. Every byte is immediately compared;
 VERIFY reports a failing address and observed value (the last mismatch for W,
-first for F). The host retains expected data and performs a second full readback
+first for F). W2 preserves the byte sampled at the mismatch; W1 rereads the
+remembered address when reporting. The host retains expected data and performs a second full readback
 before claiming upload success. Successful W reports the exclusive end address
 (modulo 65536) and value=0. Mutating operations are not automatically replayed.
 
 Statuses: 0 OK, 1 STARTED, 2 RETURN, 3 BAD_CRC, 4 RANGE, 5 TIMEOUT, 6 UART,
-7 VERIFY, 8 BAD_OP, 9 DATA. Only STARTED and RETURN describe execution, not OK.
+7 VERIFY, 8 BAD_OP, 9 DATA; W2 adds 10 BOOT, 11 ROM_BAD and 12 BLOCK.
+Only STARTED and RETURN describe execution, not OK.
 An incomplete-header error can have transaction=0 or partial address fields;
 these must not be treated as a completed request. Timeouts abandon parser state;
 scan for the next sync and validate CRC before any action. Idle error flags are
@@ -309,7 +318,7 @@ an active write, corrupts a helper return address, injects address aliases and
 invalidates corrupted diagnostic results. The fixture's reset retains RAM but
 resets CPU/devices; it is not a power-cycle/DRAM-retention model.
 
-A startup banner received after a matched response now invalidates the host
+A startup RETURN or W2 SERIAL stage received after a matched response invalidates the host
 session. It cannot be mistaken for successful completion of an interrupted
 write or RUN. Initial attach accepts the startup banner; there is still no
 persistent boot identity, so a lost banner cannot provide reset detection.
@@ -317,3 +326,72 @@ Partial writes survive reset in the fixture and are never represented as rolled
 back. The ROM does not deduplicate complete valid frames: duplicated valid RUNs
 could execute twice. The host never automatically retransmits mutations or RUN,
 and no exactly-once guarantee is claimed for a transport that duplicates frames.
+
+## W2 startup, build identity and ROM integrity
+
+Cold startup initializes 9600 8N1 first and sends a CRC-protected BOOT frame
+(transaction 0, value 1 = SERIAL) **before any glyph/video SRAM write**. It then
+checks all 2048 ROM bytes and sends value 2 = ROM_CHECK, with the CRC residue in
+address and bank=0 for success or 1 for failure. Value 3 = DISPLAY announces the
+attempt to initialize glyphs/video/8275. After display initialization, a healthy
+image sends the legacy transaction-zero RETURN/READY; a damaged image instead
+reports ROM_BAD and displays ROM ERROR. All stages are fixed nine-byte frames.
+Decoded host events include stage names. No protocol state depends on display
+memory. Individual TX waits remain bounded; failed stage transmission does not
+skip the subsequent checksum/display work.
+
+The sweep adds about 0.35–0.4 seconds before READY on the modeled clock. Wait for
+READY or allow startup to complete before probing: early commands can be lost
+while the ROM is initializing. The host does not automatically resend commands.
+The cold checksum result temporarily occupies SP as a CPU register, without
+stack memory accesses. No stack is provided to snippets. Cooperative returns
+still reinitialize serial and report RETURN; they do not repeat cold startup.
+
+W2 `I` advertises these hexadecimal capability bits: 01 stages, 02 build fingerprint,
+04 ROM CRC, 08 captured verification samples, 10 block reads. The current
+host accepts protocol 1 or 2, obtains W2's fingerprint with `V`, and requires a
+successful `K` sweep before accepting initial identification. Initial memory or
+execution API use performs this identification automatically. W1 uses legacy R
+reads; W2 uses B. A ROM_BAD report invalidates the host session. Integrity errors
+are never treated as a successful upload or permission to execute.
+
+The builder starts from the assembled 2048 bytes with zero fingerprint and CRC
+slots, hashes that canonical image with SHA-256, inserts its first eight bytes
+at `build_id`, then appends CRC-16/CCITT-FALSE for bytes 0000h–07FDh at 07FEh–07FFh
+(high byte first). The full-image residue is zero. `rom.json` records that build
+fingerprint, the CRC and the **full final-image SHA-256**. `V` returns the
+fingerprint in byte order, not a RAM-based boot/session identifier. Match it to
+that manifest to identify a release; the full SHA-256 remains the archival image
+identity. Changing instructions, data or padding changes the canonical build
+fingerprint. Neither the checksum nor fingerprint authenticates firmware.
+
+A checksum can only report damage while enough CPU/ROM/I/O code still works.
+The ROM continues its command loop after a checksum warning; host policy refuses
+further operation, but damaged instructions cannot enforce a reliable quarantine.
+This is not a substitute for verifying the programmed EPROM or an external reset.
+
+## W2 block reply framing
+
+A BLOCK reply starts with the normal nine-byte CRC-protected header:
+`5A 0C transaction bank address_lo address_hi count crc_hi crc_lo`.
+It is followed by `count` bytes and a **separate payload CRC16**, high byte first.
+Both CRCs use CCITT-FALSE. Count is restricted to 1–64 and is trusted only after
+header verification. The parser publishes a block only after both checks pass;
+invalid frames are scanned past to recover framing. The receiver checks returned
+bank, start address and count against its request. A damaged/incomplete block
+cannot produce a successful partial read and is not automatically retried.
+
+For B, address is the first requested RAM byte. For V, bank=0, count=8 and
+address is the fingerprint's ROM location; the host consumes the payload rather
+than hard-coding that relocation. ROM streams bytes directly from their source,
+without a RAM buffer. R remains available with exactly the original per-byte
+DATA framing. At 64 bytes, B replies use **75 bytes versus 576** for R; including
+the nine-byte request gives 84 versus 585 bytes. This is a wire-size improvement,
+not a promise of identical wall-clock speed on physical hardware.
+
+The W2 qualification suite also checks each block split/corruption position,
+legacy W1 host fallback, baseline reproducibility, CRC damage in ROM padding,
+no-RAM serial-first startup, startup with a stalled transmitter, captured
+one-read RAM faults and block/legacy reply lengths. The MAME runner checks W2
+stages, manifest identity, checksum success and block traffic through the actual
+emulated serial path in addition to the existing bank/diagnostic exercises.

@@ -14,18 +14,18 @@ from unittest.mock import patch
 from ravi.backends.robotron1715w import protocol as p
 from ravi.backends.robotron1715w.__main__ import main as cli
 from ravi.backends.robotron1715w.banked import BankAddress, BankedMonitor
-from ravi.backends.robotron1715w.build import ROOT, assemble
+from ravi.backends.robotron1715w.build import ROOT, assemble, build_rom
 from ravi.backends.robotron1715w.diagnostic import build_diagnostic, run_diagnostic
 from ravi.backends.robotron1715w.host import Monitor, MonitorError
 from ravi.execution import OutcomeUnknown
 
 
 class Peer:
-    def __init__(self, mode=""):
+    def __init__(self, mode="", rom=None):
         self.proc = subprocess.Popen(
             [
                 os.environ["RAVI_W_FIXTURE"],
-                str(ROOT / "rom.bin"),
+                str(rom or ROOT / "rom.bin"),
                 os.environ["RAVI_W_CAS"],
                 mode,
             ],
@@ -76,12 +76,33 @@ class WireTests(unittest.TestCase):
             p.Parser().feed(bytes(broken) + frame), [p.Response(0, 42, 0, 2048, 1)]
         )
 
+    def test_block_crc_fragmentation_and_resync(self):
+        payload = bytes(range(64))
+        frame = (
+            b"\x5a"
+            + p.protected(bytes((p.BLOCK, 7, 1, 0, 128, 64)))
+            + p.protected(payload)
+        )
+        expected = p.BlockResponse(p.BLOCK, 7, 1, 0x8000, 64, tuple(payload))
+        for split in range(len(frame) + 1):
+            parser = p.Parser()
+            self.assertEqual(
+                parser.feed(frame[:split]) + parser.feed(frame[split:]), [expected]
+            )
+        for index in range(1, len(frame)):
+            damaged = bytearray(frame)
+            damaged[index] ^= 0x80
+            self.assertEqual(p.Parser().feed(damaged + frame), [expected])
+
     @unittest.skipUnless(shutil.which("z80asm"), "needs z80asm")
     def test_reproducible_2716(self):
-        image, labels = assemble((ROOT / "rom.asm").read_text())
+        image, labels = build_rom()
         self.assertEqual(len(image), 2048)
         self.assertLessEqual(labels["image_end"], 2048)
         self.assertEqual(image, (ROOT / "rom.bin").read_bytes())
+        self.assertEqual(p.crc16_ccitt(image), 0)
+        baseline, _ = assemble((ROOT / "baseline/rom.asm").read_text())
+        self.assertEqual(baseline, (ROOT / "baseline/rom.bin").read_bytes())
 
 
 @unittest.skipUnless(
@@ -97,7 +118,7 @@ class FirmwareTests(unittest.TestCase):
         self.peer.close()
 
     def test_identity_and_no_ram(self):
-        self.assertEqual(self.m.identify()["protocol"], "W1")
+        self.assertEqual(self.m.identify()["protocol"], "W2")
         for mode in ("no-ram", "no-ram,no-display"):
             peer = Peer(mode)
             m = Monitor(peer)
@@ -106,9 +127,122 @@ class FirmwareTests(unittest.TestCase):
             self.assertIn('"violations":0', report)
             self.assertIn('"ram_reads":0', report)
             self.assertIn('"ram_writes":0', report)
+            self.assertEqual(json.loads(report)["first_tx_display_writes"], 0)
             self.assertIn('"display":1', report)
             if mode == "no-ram":
                 self.assertGreater(json.loads(report)["lit_pixels"], 100)
+
+    def test_stages_build_id_and_bad_rom(self):
+        replies = p.Parser().feed(bytes(self.peer.buffer))
+        self.assertEqual(
+            [(r.status, r.value) for r in replies],
+            [(p.BOOT, 1), (p.BOOT, 2), (p.BOOT, 3), (p.RETURN, 0)],
+        )
+        info = self.m.identify()
+        metadata = json.loads((ROOT / "rom.json").read_text())
+        self.assertEqual(info["build_id"], metadata["build_id"])
+        self.assertEqual(info["capabilities"], 31)
+        with tempfile.TemporaryDirectory() as directory:
+            image = bytearray((ROOT / "rom.bin").read_bytes())
+            image[-3] ^= 1  # padding damage, not a self-test instruction
+            rom = Path(directory) / "bad.bin"
+            rom.write_bytes(image)
+            peer = Peer("no-ram", rom)
+            try:
+                boot = p.Parser().feed(bytes(peer.buffer))
+                self.assertTrue(
+                    any(
+                        r.status == p.BOOT and r.value == 2 and r.bank == 1
+                        for r in boot
+                    )
+                )
+                self.assertEqual(boot[-1].status, p.ROM_BAD)
+                peer.buffer.clear()  # even a lost startup warning is caught by K
+                monitor = Monitor(peer)
+                with self.assertRaises(MonitorError) as cm:
+                    monitor.identify()
+                self.assertEqual(cm.exception.reply.status, p.ROM_BAD)
+                self.assertFalse(monitor.usable)
+                with self.assertRaises(OutcomeUnknown):
+                    monitor.execute(0x8000)
+            finally:
+                peer.close()
+
+    def test_w1_baseline_fallback(self):
+        peer = Peer(rom=ROOT / "baseline/rom.bin")
+        try:
+            monitor = Monitor(peer)
+            self.assertEqual(monitor.identify()["protocol"], "W1")
+            monitor.write_memory(0x8000, b"baseline")
+            self.assertEqual(monitor.read_memory(0x8000, 8), b"baseline")
+            self.assertTrue(any(x[1] == ord("R") for x in peer.tx))
+            self.assertFalse(
+                any(x[1] in (ord("B"), ord("V"), ord("K")) for x in peer.tx)
+            )
+        finally:
+            peer.close()
+
+    def test_captured_transient_mismatch(self):
+        self.m.identify()
+        self.peer.command("F 8000 ff 00 1")
+        with self.assertRaises(MonitorError) as cm:
+            self.m.write_memory(0x8000, b"\xff" * 64)
+        self.assertEqual(
+            (
+                cm.exception.reply.status,
+                cm.exception.reply.address,
+                cm.exception.reply.value,
+            ),
+            (p.VERIFY, 0x8000, 0),
+        )
+        # The underlying RAM already reads correctly: original fault was one-shot.
+        self.assertEqual(self.m.read_memory(0x8000, 1), b"\xff")
+
+    def test_serial_failure_does_not_stop_display_startup(self):
+        peer = Peer("no-tx,no-ram")
+        try:
+            peer.command("S 30000000")
+            peer.command("U 0")
+            self.assertEqual(Monitor(peer).identify()["protocol"], "W2")
+        finally:
+            stats = json.loads(peer.close())
+        self.assertEqual(stats["first_tx_display_writes"], 0)
+        self.assertEqual(stats["display"], 1)
+        self.assertGreater(stats["lit_pixels"], 100)
+
+    def test_corrupt_block_reply_is_not_retried(self):
+        self.m.identify()
+        self.m.timeout = 0.03
+        original = self.peer.write
+
+        def corrupt(data):
+            original(data)
+            self.peer.buffer[-1] ^= 1
+
+        before = len(self.peer.tx)
+        with patch.object(self.peer, "write", side_effect=corrupt):
+            with self.assertRaises(TimeoutError):
+                self.m.read_memory(0x8000, 64)
+        self.assertEqual(len(self.peer.tx), before + 1)
+        self.m.timeout = 3
+        self.m.identify()
+
+    def test_block_wire_size_and_legacy_read(self):
+        self.m.write_memory(0x8000, bytes(range(64)))
+        self.peer.write(p.request("B", 80, 1, 0x8000, 64))
+        self.assertEqual(len(self.peer.buffer), 75)
+        self.assertEqual(
+            p.Parser().feed(bytes(self.peer.buffer))[0].data, tuple(range(64))
+        )
+        self.peer.buffer.clear()
+        self.peer.write(p.request("R", 81, 1, 0x8000, 64))
+        self.peer.command("S 4000000")
+        self.assertEqual(len(self.peer.buffer), 576)
+        self.assertEqual(
+            bytes(r.value for r in p.Parser().feed(bytes(self.peer.buffer))),
+            bytes(range(64)),
+        )
+        self.peer.buffer.clear()
 
     def test_cli_upload_read_run_and_logs(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -166,7 +300,7 @@ class FirmwareTests(unittest.TestCase):
         frame[-1] ^= 1
         self.peer.write(bytes(frame))
         self.peer.command("S 5000000")
-        self.assertEqual(self.m.identify()["protocol"], "W1")
+        self.assertEqual(self.m.identify()["protocol"], "W2")
         self.assertEqual(self.m.read_memory(0x8000, 1), b"\xa7")
         self.peer.write(p.request("W", 78, 1, 0x8000, 3) + b"\x01")
         self.peer.command("S 5000000")
@@ -206,7 +340,9 @@ class FirmwareTests(unittest.TestCase):
         self.m.write_memory(0x7000, bytes.fromhex("3e2ac30300"))
         original_write = self.peer.write
         for lost_status in (p.STARTED, p.RETURN):
-            monitor = Monitor(self.peer, timeout=0.03)
+            monitor = Monitor(self.peer)
+            monitor.identify()
+            monitor.timeout = 0.03
 
             def dropping_write(data):
                 original_write(data)
@@ -279,7 +415,7 @@ class FirmwareTests(unittest.TestCase):
         self.m.identify()
 
     def test_dropped_and_duplicated_command_bytes(self):
-        frame = p.request("F", 90, 1, 0x8000, 0x55)
+        frame = p.request("F", 0, 1, 0x8000, 0x55)
         for index in range(len(frame)):
             for damaged in (
                 frame[:index] + frame[index + 1 :],
@@ -295,7 +431,7 @@ class FirmwareTests(unittest.TestCase):
         # The ROM makes no exactly-once claim for duplicated valid frames.
 
     def test_payload_loss_duplication_and_reset_boundaries(self):
-        frame = p.request("W", 91, 1, 0x8000, 8)
+        frame = p.request("W", 0, 1, 0x8000, 8)
         payload = p.protected(bytes(range(8)))
         for index in range(len(payload)):
             for damaged in (
@@ -307,7 +443,7 @@ class FirmwareTests(unittest.TestCase):
                 replies = p.Parser().feed(bytes(self.peer.buffer))
                 if damaged[: len(payload)] != payload:
                     self.assertFalse(
-                        any(r.transaction == 91 and r.status == p.OK for r in replies)
+                        any(r.transaction == 0 and r.status == p.OK for r in replies)
                     )
                 self.m.identify()
         for cut in (1, 5, 9, 10, 15):
@@ -338,7 +474,9 @@ class FirmwareTests(unittest.TestCase):
         self.m.identify()
         original = self.peer.write
         for mutate in (lambda b: b[:4] + b[5:], lambda b: b[:4] + b[3:]):
-            monitor = Monitor(self.peer, timeout=0.03)
+            monitor = Monitor(self.peer)
+            monitor.identify()
+            monitor.timeout = 0.03
 
             def damaged(data):
                 original(data)

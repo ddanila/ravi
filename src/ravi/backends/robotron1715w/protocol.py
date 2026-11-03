@@ -1,4 +1,4 @@
-"""W1 fixed header/reply framing. No compatibility claim with monitor API v2."""
+"""W1 fixed frames and W2 header-protected block replies."""
 
 from dataclasses import dataclass
 
@@ -8,6 +8,9 @@ SYNC = 0xA5
 REPLY = 0x5A
 MAX_BLOCK = 64
 OK, STARTED, RETURN, BAD_CRC, RANGE, TIMEOUT, UART, VERIFY, BAD_OP, DATA = range(10)
+BOOT, ROM_BAD, BLOCK = 10, 11, 12
+STAGES = {1: "SERIAL", 2: "ROM_CHECK", 3: "DISPLAY"}
+CAP_BLOCK = 16
 STATUS = (
     "OK",
     "STARTED",
@@ -19,6 +22,9 @@ STATUS = (
     "VERIFY",
     "BAD_OP",
     "DATA",
+    "BOOT",
+    "ROM_BAD",
+    "BLOCK",
 )
 
 
@@ -44,6 +50,11 @@ class Response:
     value: int
 
 
+@dataclass(frozen=True)
+class BlockResponse(Response):
+    data: tuple[int, ...]
+
+
 class Parser:
     def __init__(self):
         self.buffer = bytearray()
@@ -62,6 +73,24 @@ class Parser:
                 del self.buffer[0]
                 continue
             status, txn, bank, low, high, value = body[:6]
-            result.append(Response(status, txn, bank, low | high << 8, value))
-            del self.buffer[:9]
+            if status == BLOCK:
+                if not 1 <= value <= MAX_BLOCK:
+                    del self.buffer[0]
+                    continue
+                size = 9 + value + 2
+                if len(self.buffer) < size:
+                    break
+                payload = bytes(self.buffer[9:size])
+                if crc16_ccitt(payload) != 0:
+                    del self.buffer[0]
+                    continue
+                result.append(
+                    BlockResponse(
+                        status, txn, bank, low | high << 8, value, tuple(payload[:-2])
+                    )
+                )
+                del self.buffer[:size]
+            else:
+                result.append(Response(status, txn, bank, low | high << 8, value))
+                del self.buffer[:9]
         return result

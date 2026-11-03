@@ -1,4 +1,4 @@
-"""Mac/Linux CLI for the custom W1 ROM; never invokes the plain-1715 loader."""
+"""Mac/Linux CLI for the custom W1/W2 ROM; never invokes the plain-1715 loader."""
 
 import argparse
 import glob
@@ -140,7 +140,7 @@ def main(argv=None):
         )
     args.log_dir.mkdir(parents=True, exist_ok=False)
     result = {
-        "target": "PC1715W/M custom W1 ROM",
+        "target": "PC1715W/M custom W1/W2 ROM",
         "port": args.port,
         "format": "9600 8N1",
         "command": args.command,

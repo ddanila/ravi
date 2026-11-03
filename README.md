@@ -72,3 +72,8 @@ W1 also provides bounded stackless `diagnose` snippets for walking data bits,
 uniform RAM patterns and address aliases, with machine-readable results. Its
 optional MAME runner exercises the unmodified `rt1715w` CPU/devices through a
 loopback null modem; see the W1 guide for qualification and recovery limits.
+
+The current 2 KiB W2 ROM adds serial-first stage reports, a build fingerprint,
+full-ROM CRC, retained verification samples and efficient block reads. The host
+still supports the preserved W1 baseline; see the guide for framing and build
+requirements.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline W1 qualification through MAME's real null-modem serial device."""
+"""Offline W2 qualification through MAME's real null-modem serial device."""
 
 import argparse
 import hashlib
@@ -45,7 +45,7 @@ local m=manager.machine
 local frames=0
 emu.register_frame_done(function()
  frames=frames+1
- if frames==10 then
+ if frames==30 then
   local f=io.open(OUT..'/startup.json','w')
   f:write(string.format('{"pc":%d}',m.devices[':maincpu'].state['PC'].value))
   f:close()
@@ -116,9 +116,21 @@ end)
                 connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 transport = object.__new__(SocketTransport)
                 transport.socket = connection
-                time.sleep(0.5)  # let the observer capture startup before RAM tests
+                time.sleep(1.0)  # let the observer capture startup before RAM tests
                 m = Monitor(LoggedTransport(transport, rx, tx), timeout=5)
                 report["identity"] = m.identify()
+                metadata = json.loads((ROOT / "rom.json").read_text())
+                assert report["identity"]["protocol"] == "W2"
+                assert report["identity"]["build_id"] == metadata["build_id"]
+                assert [e["stage"] for e in m.events if "stage" in e] == [
+                    "SERIAL",
+                    "ROM_CHECK",
+                    "DISPLAY",
+                ]
+                assert any(e.get("rom_crc_ok") is True for e in m.events)
+                report["checks"].append(
+                    "W2 startup stages, manifest fingerprint and full-ROM CRC"
+                )
                 report["checks"].append(
                     "9600 8N1 identification through CTC2/SIO/null-modem"
                 )
@@ -161,6 +173,11 @@ end)
                 report["checks"].append(
                     "three bounded diagnostic snippets with verified results"
                 )
+                assert any(
+                    e["status"] == 12 and e["bank"] == 1 and e["value"] == 64
+                    for e in m.events
+                )
+                report["checks"].append("CRC-protected 64-byte block replies")
                 report["events"] = m.events
                 report["startup"] = json.loads((out / "startup.json").read_text())
                 assert (out / "startup.png").stat().st_size > 100

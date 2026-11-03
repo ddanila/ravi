@@ -35,6 +35,7 @@ class Monitor:
         self.transaction = 0
         self.usable = True
         self.attached = False
+        self.identity = None
         self.events = []
         self.reserved = []
 
@@ -42,7 +43,7 @@ class Monitor:
     def target_info(self):
         return TargetInfo(
             "robotron1715w",
-            "W1",
+            self.identity["protocol"] if self.identity else "W1/W2",
             frozenset(
                 (
                     Capability.MEMORY_READ,
@@ -78,8 +79,20 @@ class Monitor:
         while time.monotonic() < deadline:
             while self.pending:
                 r = self.pending.popleft()
-                self.events.append(asdict(r))
-                if r.status == p.RETURN and r.transaction == 0 and self.attached:
+                event = asdict(r)
+                if r.status == p.BOOT:
+                    event["stage"] = p.STAGES.get(r.value, "UNKNOWN")
+                    if r.value == 2:
+                        event["rom_crc_ok"] = r.bank == 0 and r.address == 0
+                self.events.append(event)
+                if r.status == p.ROM_BAD:
+                    self.usable = False
+                    raise MonitorError(r)
+                if (
+                    r.transaction == 0
+                    and self.attached
+                    and (r.status == p.RETURN or r.status == p.BOOT and r.value == 1)
+                ):
                     self.usable = False
                     raise ConnectionError(
                         "target restarted during established W1 session"
@@ -102,17 +115,40 @@ class Monitor:
 
     def identify(self):
         r = self._ok(self._begin("I"))
-        if (r.bank, r.address, r.value) != (0, 2048, 1):
-            raise ValueError("unexpected W1 identity")
-        return {
+        if r.address != 2048 or r.value not in (1, 2):
+            raise ValueError("unexpected W1/W2 identity")
+        info = {
             "target": "robotron1715w",
-            "protocol": "W1",
+            "protocol": f"W{r.value}",
             "rom_bytes": r.address,
             "main_ram_workspace": 0,
             "max_block": p.MAX_BLOCK,
             "boot_identity": None,
             "replay_scope": "none",
+            "capabilities": r.bank if r.value == 2 else 0,
         }
+        if r.value == 2:
+            if r.bank != 31:
+                raise ValueError("unsupported W2 capability set")
+            version = self._reply(self._begin("V"))
+            if (
+                not isinstance(version, p.BlockResponse)
+                or version.bank != 0
+                or len(version.data) != 8
+            ):
+                raise ValueError("invalid W2 build fingerprint")
+            info["build_id"] = bytes(version.data).hex()
+            check = self._ok(self._begin("K"))
+            if (check.bank, check.address, check.value) != (0, 0, 0):
+                self.usable = False
+                raise ValueError("unexpected ROM integrity result")
+            info["rom_integrity"] = "CRC16 residue zero"
+        self.identity = info
+        return info
+
+    def _ensure_identity(self):
+        if self.identity is None:
+            self.identify()
 
     def _range(self, address, length, writing=False):
         if (
@@ -129,10 +165,19 @@ class Monitor:
 
     def read_memory(self, address, length):
         self._range(address, length)
+        self._ensure_identity()
         result = bytearray()
         while len(result) < length:
             count = min(p.MAX_BLOCK, length - len(result))
             start = address + len(result)
+            if self.identity["capabilities"] & p.CAP_BLOCK:
+                r = self._reply(self._begin("B", 1, start, count))
+                if not isinstance(r, p.BlockResponse):
+                    raise MonitorError(r)
+                if (r.bank, r.address, r.value) != (1, start, count):
+                    raise ValueError("out-of-order W2 block")
+                result.extend(r.data)
+                continue
             deadline = self._begin("R", 1, start, count)
             for offset in range(count):
                 r = self._reply(deadline)
@@ -145,6 +190,7 @@ class Monitor:
 
     def write_memory(self, address, data):
         self._range(address, len(data), True)
+        self._ensure_identity()
         for offset in range(0, len(data), p.MAX_BLOCK):
             block = data[offset : offset + p.MAX_BLOCK]
             self._ok(
@@ -161,6 +207,7 @@ class Monitor:
         self._range(address, 256, True)
         if address & 255 or not 0 <= value <= 255:
             raise ValueError("fill requires page alignment and byte pattern")
+        self._ensure_identity()
         self._ok(self._begin("F", 1, address, value))
 
     def survey(self, address, length):
@@ -191,6 +238,7 @@ class Monitor:
         self._range(address, 1)
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("execution timeout must be positive")
+        self._ensure_identity()
         # Even losing STARTED leaves execution uncertain; never resend GO.
         try:
             r = self._reply(self._begin("G", 1, address))
