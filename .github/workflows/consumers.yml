@@ -70,7 +70,7 @@ jobs:
       - name: Test the candidate inside the consumer dependency path
         working-directory: consumer
         run: |
-          git submodule update --init third_party/ravi third_party/dac-emulation third_party/zmac third_party/juku-common
+          git submodule update --init --depth 1 --filter=blob:none --jobs 4 third_party/ravi third_party/dac-emulation third_party/zmac third_party/juku-common
           git -C third_party/ravi fetch "$GITHUB_WORKSPACE/candidate" HEAD
           git -C third_party/ravi checkout --detach FETCH_HEAD
           sudo apt-get update
