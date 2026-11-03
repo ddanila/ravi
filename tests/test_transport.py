@@ -4,6 +4,7 @@ import io
 import os
 import pty
 import socket
+import sys
 import termios
 import unittest
 from unittest.mock import patch
@@ -60,6 +61,12 @@ class SerialTransportTests(unittest.TestCase):
             self.assertFalse(configured[2] & termios.CSTOPB)
             transport.close()
             restored = termios.tcgetattr(slave)
+            if sys.platform == "darwin":
+                # Darwin sets the kernel-maintained pending-input flag when
+                # restoring canonical mode. Compare configuration, not this
+                # transient line-discipline bookkeeping bit.
+                restored[3] &= ~termios.PENDIN
+                original[3] &= ~termios.PENDIN
             self.assertEqual(restored, original)
         finally:
             os.close(master)

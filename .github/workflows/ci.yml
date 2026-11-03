@@ -35,3 +35,5 @@ jobs:
           "$RUNNER_TEMP/ravi-wheel/bin/python" example.py
           "$RUNNER_TEMP/ravi-wheel/bin/python" -m ravi.backends.robotron1715 --help
           "$RUNNER_TEMP/ravi-wheel/bin/python" -c "from importlib.resources import files; p = files('ravi.backends.robotron1715'); assert p.joinpath('smoke.bin').read_bytes(); assert p.joinpath('smoke.asm').read_text()"
+          "$RUNNER_TEMP/ravi-wheel/bin/python" -m ravi.backends.robotron1715w --help
+          "$RUNNER_TEMP/ravi-wheel/bin/python" -c "from importlib.resources import files; p = files('ravi.backends.robotron1715w'); assert len(p.joinpath('rom.bin').read_bytes()) == 2048; assert p.joinpath('helper.asm').read_text()"

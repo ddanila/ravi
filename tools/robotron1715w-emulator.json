@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/ddanila/dac-emulation",
+  "commit": "73ad229cceb10a74b543d0d7fb4d3148f00d4ec5",
+  "fixture": "build/robotron-rom-monitor",
+  "qualification": "CPU/device model only; no physical PC001 qualification"
+}

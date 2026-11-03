@@ -1,0 +1,33 @@
+name: W1 firmware qualification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[test]'
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends z80asm
+      - id: pin
+        run: echo "commit=$(python -c 'import json; print(json.load(open("tools/robotron1715w-emulator.json"))["commit"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: ddanila/dac-emulation
+          ref: ${{ steps.pin.outputs.commit }}
+          path: build/emulator
+      - run: make -C build/emulator test-robotron-devices
+      - run: python tools/qualify_robotron1715w.py --emulator build/emulator --output build/w1-qualification
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: w1-qualification
+          path: build/w1-qualification

@@ -58,3 +58,12 @@ The Juku host and monitor codec were extracted from
 [ddanila/8080-cosim](https://github.com/ddanila/8080-cosim) at `4828c23a`.
 Compatibility modules in both repositories retain their existing import paths
 and entry points; each consumer pins this library by Git commit.
+
+## PC1715W/M custom diagnostic ROM
+
+The [W1 ROM monitor](docs/robotron1715w.md) fits a 2 KiB 2716, starts without
+main RAM, displays status, and accepts verified serial transfers. A tested,
+relocatable helper adds banked memory access and returning diagnostic snippets.
+Mac/Linux CLI: `python -m ravi.backends.robotron1715w --help`.
+This is separate from the plain-PC1715 stock loader; physical qualification is
+pending. Emulator qualification and build instructions are in the linked guide.
