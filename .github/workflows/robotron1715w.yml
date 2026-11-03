@@ -2,14 +2,31 @@ name: W1/W2 firmware qualification
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'tools/**'
+      - 'pyproject.toml'
+      - 'Makefile'
+      - '.github/workflows/robotron1715w.yml'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'tools/**'
+      - 'pyproject.toml'
+      - 'Makefile'
+      - '.github/workflows/robotron1715w.yml'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   firmware:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,6 +41,16 @@ jobs:
           repository: ddanila/dac-emulation
           ref: ${{ steps.pin.outputs.commit }}
           path: build/emulator
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /Makefile
+            /machines/robotron1715m/
+            /common/cpu/
+            /common/media/
+            /common/trace/
+            /third_party/cpu/chips/
+            /tests/integration/robotron_devices_test.c
+            /tests/integration/robotron_rom_monitor.c
       - run: make -C build/emulator test-robotron-devices
       - run: python tools/qualify_robotron1715w.py --emulator build/emulator --output build/w1-qualification
       - uses: actions/upload-artifact@v4

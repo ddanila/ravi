@@ -7,19 +7,48 @@ reply deadlines, capability/range rejection, replay/uncertain outcomes, and
 real POSIX PTY/socket transport ownership, EOF and partial-I/O behavior.
 
 Library CI checks Python 3.10 and 3.12 and installs the built wheel into a fresh
-virtual environment outside the source checkout. The product compatibility workflow checks out pinned consumer harnesses and
-explicitly replaces each consumer's `third_party/ravi` checkout with the candidate
-library commit. It runs DOS native/8086 agent integration and Juku T28/T34 ROM
-integration. Backend-only changes select that product; shared or unknown changes
-select both; prose-only changes skip both. Consumer revisions are fixed in the
-workflow so unrelated consumer changes cannot silently alter a library result.
-Advance those harness pins deliberately when product tests evolve.
+virtual environment outside the source checkout. This fast contract and packaging
+suite remains automatic. The W1/W2 firmware job runs on source, tests, tooling,
+build configuration and its own workflow changes; it checks out only the pinned
+emulator sources needed for the Robotron devices and ROM monitor. Its five-minute
+limit and cancellation of superseded runs bound CI cost.
+
+Heavy product compatibility is **local by default**, with the complete pinned
+DOS/Juku smoke harnesses also available through the manual **Product compatibility**
+workflow (`all`, `dos`, or `juku`). They do not run on every push or PR. The workflow
+explicitly replaces each consumer's `third_party/ravi` with the selected candidate
+commit; advance consumer harness pins deliberately when product tests evolve.
+
+Before releasing a shared transport/protocol/API change or advancing a consumer
+pin, run the affected consumer gates locally against that exact candidate. Shared
+or unknown changes require both consumers; backend-only changes require that
+consumer. Documentation and isolated Robotron changes need no DOS/Juku rerun.
+Keep the candidate/harness revisions, command, result and environment with the
+qualification evidence. Manual CI is a fallback when the local toolchain is
+unavailable, not an additional required repeat of a passing local run.
+
+In a disposable consumer checkout (using the harness revision in
+`.github/workflows/consumers.yml`), replace its dependency explicitly:
+
+```sh
+git submodule update --init --depth 1 --filter=blob:none third_party/ravi
+git -C third_party/ravi fetch /absolute/path/to/ravi HEAD
+git -C third_party/ravi checkout --detach FETCH_HEAD
+```
+
+For DOS, run `make check` and `make dos-test` with its documented DOSBox-X/toolchain
+installed. For Juku, initialize its DAC, zmac and juku-common submodules with the
+same shallow/filter options, then run `./sync/jukuravi_t28_check.sh` and
+`./sync/jukuravi_t34_check.sh`. Run the additional full gates below when changing
+the corresponding firmware or diagnostics. MAME qualification and large analog,
+RAM/raster or fuzz campaigns stay local and are run when the change warrants
+them; their coverage is retained without adding them to every library CI run.
 
 The consumers retain their full regression gates:
 
 | Consumer | Gate |
 | --- | --- |
-| DOSRAVI | `make check`; `make dos-test` (8086 and 80186 locally, 8086 ordinary CI); C decoder fuzz on decoder changes |
+| DOSRAVI | `make check`; `make dos-test` (8086 and 80186 locally, 8086 manual library CI); C decoder fuzz on decoder changes |
 | Jukuravi | T28 loader/attach/replay and public memory API; T34 PIT initialization; all T36 contract/RAM/raster groups; retained older regression lane |
 
 Firmware build checks compare generated Juku ROMs to the checked-in bytes.
@@ -48,18 +77,15 @@ cloning either consumer. Juku's emulator gates also require the existing
 `third_party/dac-emulation`, `third_party/zmac` and `third_party/juku-common`
 submodules as specified by each gate.
 
-CI skips expensive product checks for documentation-only changes. A RAVI pin
-change selects DOS native/actual-agent tests or the Juku consumers respectively;
-it does not require unrelated analog/LVS work. Unknown changes remain
-conservative. Consumer firmware and physical evidence stay in their own repos.
-
+Consumer firmware and physical evidence stay in their own repos. Their own CI
+policies are independent of this library's manual compatibility workflow.
 
 ## Extraction evidence (2026-10-14)
 
 The implementation revision `c07e38c` passed 27 library behavior tests and the
 synthetic extension example, plus isolated wheel installation. Hosted library
 CI passed on Python 3.10 and 3.12. Three additional selector tests cover the
-product compatibility CI policy.
+original product selection policy (the selector is retained as a helper).
 
 DOSRAVI `1cd4676` passed its 51-test native suite, C protocol tests, Ruff,
 cppcheck, real DOSBox-X agent integration on both 8086 and 80186, and isolated

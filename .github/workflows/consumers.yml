@@ -1,30 +1,20 @@
 name: Product compatibility
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
+    inputs:
+      consumer:
+        description: Consumer harness to qualify against this revision
+        type: choice
+        default: all
+        options: [all, dos, juku]
 permissions:
   contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  changes:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    outputs:
-      dos: ${{ steps.select.outputs.dos }}
-      juku: ${{ steps.select.outputs.juku }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: select
-        run: python3 ci/select_consumers.py
   dos:
-    needs: changes
-    if: needs.changes.outputs.dos == 'true'
+    if: inputs.consumer == 'all' || inputs.consumer == 'dos'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
@@ -42,7 +32,7 @@ jobs:
       - name: Test the candidate inside the consumer dependency path
         working-directory: consumer
         run: |
-          git submodule update --init third_party/ravi
+          git submodule update --init --depth 1 --filter=blob:none third_party/ravi
           git -C third_party/ravi fetch "$GITHUB_WORKSPACE/candidate" HEAD
           git -C third_party/ravi checkout --detach FETCH_HEAD
           sudo apt-get update
@@ -51,8 +41,7 @@ jobs:
           make check
           DOSRAVI_TEST_CPUS=8086 make dos-test
   juku:
-    needs: changes
-    if: needs.changes.outputs.juku == 'true'
+    if: inputs.consumer == 'all' || inputs.consumer == 'juku'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
