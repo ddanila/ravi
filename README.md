@@ -67,3 +67,8 @@ relocatable helper adds banked memory access and returning diagnostic snippets.
 Mac/Linux CLI: `python -m ravi.backends.robotron1715w --help`.
 This is separate from the plain-PC1715 stock loader; physical qualification is
 pending. Emulator qualification and build instructions are in the linked guide.
+
+W1 also provides bounded stackless `diagnose` snippets for walking data bits,
+uniform RAM patterns and address aliases, with machine-readable results. Its
+optional MAME runner exercises the unmodified `rt1715w` CPU/devices through a
+loopback null modem; see the W1 guide for qualification and recovery limits.

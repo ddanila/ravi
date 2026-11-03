@@ -12,6 +12,7 @@ from pathlib import Path
 from ravi.transport import LoggedTransport, SerialTransport
 
 from .banked import BankAddress, BankedMonitor
+from .diagnostic import KINDS, build_diagnostic, run_diagnostic
 from .host import Monitor
 
 
@@ -92,6 +93,12 @@ def main(argv=None):
     tests.add_argument("address", type=number)
     tests.add_argument("length", type=number)
     tests.add_argument("--banks", type=int, nargs="+", default=[1])
+    diag = sub.add_parser("diagnose", help="destructive bounded RAM diagnostic snippet")
+    diag.add_argument("kind", choices=KINDS)
+    diag.add_argument("address", type=number)
+    diag.add_argument("length", type=number)
+    diag.add_argument("--workspace", type=number, required=True)
+    diag.add_argument("--bank", type=int, default=1)
     args = parser.parse_args(argv)
     if args.command == "ports":
         print(
@@ -122,10 +129,15 @@ def main(argv=None):
             if image is not None
             else (1 if args.command == "run" else args.length)
         )
-        if args.bank != 1 and args.helper is None:
+        if args.bank != 1 and args.helper is None and args.command != "diagnose":
             parser.error("banked access needs --helper")
     if args.command == "campaign" and args.helper is None and args.banks != [1]:
         parser.error("banked campaign needs --helper")
+    if args.command == "diagnose":
+        # Validate placement before opening serial or preparing any helper.
+        build_diagnostic(
+            args.kind, args.workspace, args.address, args.length, args.bank
+        )
     args.log_dir.mkdir(parents=True, exist_ok=False)
     result = {
         "target": "PC1715W/M custom W1 ROM",
@@ -182,13 +194,25 @@ def main(argv=None):
                     if helper
                     else m.execute(args.address, args.execution_timeout)
                 )
+            elif args.command == "diagnose":
+                result["diagnostic"] = run_diagnostic(
+                    m,
+                    args.kind,
+                    args.workspace,
+                    args.address,
+                    args.length,
+                    args.bank,
+                    args.log_dir / "diagnostic",
+                )
             elif args.command == "campaign":
                 result["campaign"] = campaign(
                     m, helper, args.address, args.length, args.banks
                 )
-            result["success"] = all(
-                x["passed"] for x in result.get("survey", [])
-            ) and result.get("campaign", {}).get("passed", True)
+            result["success"] = (
+                all(x["passed"] for x in result.get("survey", []))
+                and result.get("campaign", {}).get("passed", True)
+                and result.get("diagnostic", {}).get("passed", True)
+            )
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
     finally:

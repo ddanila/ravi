@@ -15,6 +15,7 @@ from ravi.backends.robotron1715w import protocol as p
 from ravi.backends.robotron1715w.__main__ import main as cli
 from ravi.backends.robotron1715w.banked import BankAddress, BankedMonitor
 from ravi.backends.robotron1715w.build import ROOT, assemble
+from ravi.backends.robotron1715w.diagnostic import build_diagnostic, run_diagnostic
 from ravi.backends.robotron1715w.host import Monitor, MonitorError
 from ravi.execution import OutcomeUnknown
 
@@ -119,6 +120,7 @@ class FirmwareTests(unittest.TestCase):
                 ["load", "0x7000", str(root / "snippet.bin")],
                 ["read", "0x7000", "5", "--output", str(root / "read.bin")],
                 ["run", "0x7000"],
+                ["diagnose", "data-lines", "0x8000", "1", "--workspace", "0xf000"],
             ]
             for index, command in enumerate(commands):
                 logs = root / str(index)
@@ -144,7 +146,9 @@ class FirmwareTests(unittest.TestCase):
                 self.assertTrue((logs / "tx.bin").read_bytes())
                 self.assertTrue((logs / "rx.bin").read_bytes())
             self.assertEqual((root / "read.bin").read_bytes(), snippet)
-            self.assertEqual(result["execution"]["accumulator"], 42)
+            execution = json.loads((root / "3/result.json").read_text())
+            self.assertEqual(execution["execution"]["accumulator"], 42)
+            self.assertTrue(result["diagnostic"]["passed"])
 
     def test_write_read_edges(self):
         for address in (0x4000, 0x71FD, 0xFFC0):
@@ -273,6 +277,173 @@ class FirmwareTests(unittest.TestCase):
         self.peer.command("S 5000000")
         self.peer.command("U 0")
         self.m.identify()
+
+    def test_dropped_and_duplicated_command_bytes(self):
+        frame = p.request("F", 90, 1, 0x8000, 0x55)
+        for index in range(len(frame)):
+            for damaged in (
+                frame[:index] + frame[index + 1 :],
+                frame[:index] + frame[index : index + 1] + frame[index:],
+            ):
+                self.m.write_memory(0x8000, b"\xa7")
+                self.peer.write(damaged)
+                self.peer.command("S 5000000")
+                self.m.identify()
+                expected = b"\x55" if damaged[:9] == frame else b"\xa7"
+                self.assertEqual(self.m.read_memory(0x8000, 1), expected)
+        # A duplicated final CRC byte leaves one valid complete command.
+        # The ROM makes no exactly-once claim for duplicated valid frames.
+
+    def test_payload_loss_duplication_and_reset_boundaries(self):
+        frame = p.request("W", 91, 1, 0x8000, 8)
+        payload = p.protected(bytes(range(8)))
+        for index in range(len(payload)):
+            for damaged in (
+                payload[:index] + payload[index + 1 :],
+                payload[:index] + payload[index : index + 1] + payload[index:],
+            ):
+                self.peer.write(frame + damaged)
+                self.peer.command("S 5000000")
+                replies = p.Parser().feed(bytes(self.peer.buffer))
+                if damaged[: len(payload)] != payload:
+                    self.assertFalse(
+                        any(r.transaction == 91 and r.status == p.OK for r in replies)
+                    )
+                self.m.identify()
+        for cut in (1, 5, 9, 10, 15):
+            self.peer.write((frame + payload)[:cut])
+            self.peer.command("Z")
+            fresh = Monitor(self.peer)
+            fresh.identify()
+        # Simulated reset is external to the ROM and does not roll back RAM.
+
+    def test_reset_during_write_invalidates_session(self):
+        self.m.identify()
+        original = self.peer.write
+
+        def interrupted(data):
+            original(data[:10])  # validated W header plus one payload byte
+            self.peer.command("Z")
+
+        with patch.object(self.peer, "write", side_effect=interrupted):
+            with self.assertRaises(ConnectionError):
+                self.m.write_memory(0x8000, b"abc")
+        with self.assertRaises(OutcomeUnknown):
+            self.m.identify()
+        fresh = Monitor(self.peer)
+        fresh.identify()
+        self.assertEqual(fresh.read_memory(0x8000, 3), b"a\xa7\xa7")
+
+    def test_damaged_reply_no_mutation_replay(self):
+        self.m.identify()
+        original = self.peer.write
+        for mutate in (lambda b: b[:4] + b[5:], lambda b: b[:4] + b[3:]):
+            monitor = Monitor(self.peer, timeout=0.03)
+
+            def damaged(data):
+                original(data)
+                self.peer.buffer = bytearray(mutate(self.peer.buffer))
+
+            before = len(self.peer.tx)
+            with patch.object(self.peer, "write", side_effect=damaged):
+                with self.assertRaises(TimeoutError):
+                    monitor.fill_page(0x8000, 0x55)
+            self.assertEqual(len(self.peer.tx), before + 1)
+            self.assertEqual(self.m.read_memory(0x8000, 1), b"\x55")
+
+    def test_stack_fault_is_uncertain_and_never_replayed(self):
+        helper = BankedMonitor(self.m, 0xF000)
+        helper.install()
+        self.m.write_memory(0x7000, bytes.fromhex("3e2ac9"))
+        # Corrupt the return address when RET reads the tested helper stack.
+        self.peer.command(f"F {helper.labels['stack_end'] - 1:x} ff 00")
+        before = len([x for x in self.peer.tx if x[1] == ord("G")])
+        with self.assertRaises(OutcomeUnknown):
+            helper.call(0x7000, timeout=0.05)
+        self.assertEqual(len([x for x in self.peer.tx if x[1] == ord("G")]), before + 1)
+        with self.assertRaises(OutcomeUnknown):
+            self.m.identify()
+
+    def test_bounded_diagnostic_snippets(self):
+        for kind, length in (
+            ("data-lines", 1),
+            ("ram-patterns", 256),
+            ("address-lines", 512),
+        ):
+            with self.subTest(kind=kind):
+                report = run_diagnostic(self.m, kind, 0xF000, 0x8000, length)
+                self.assertTrue(report["passed"])
+                self.assertEqual(report["manifest"]["stack_bytes"], 0)
+        # Snippet banks both reads and writes, without relying on helper CALL.
+        self.assertTrue(
+            run_diagnostic(self.m, "address-lines", 0xF000, 0x100, 512, 3)["passed"]
+        )
+        self.peer.command("F 8000 01 00")
+        result = run_diagnostic(self.m, "data-lines", 0xF000, 0x8000, 1)
+        self.assertFalse(result["passed"])
+        self.assertEqual(
+            result["failure"],
+            {"bank": 1, "address": 0x8000, "expected": 1, "actual": 0},
+        )
+        self.peer.command("F 8003 01 00")
+        result = run_diagnostic(self.m, "ram-patterns", 0xF000, 0x8000, 256)
+        self.assertEqual(
+            result["failure"],
+            {"bank": 1, "address": 0x8003, "expected": 255, "actual": 254},
+        )
+        self.peer.command("F ffffffff 00 00")
+        # Inject after workspace preparation so the diagnostic catches the alias.
+        original_execute = self.m.execute
+
+        def aliased(*args, **kwargs):
+            self.peer.command("A 256")
+            try:
+                return original_execute(*args, **kwargs)
+            finally:
+                self.peer.command("A 0")
+
+        with patch.object(self.m, "execute", side_effect=aliased):
+            self.assertFalse(
+                run_diagnostic(self.m, "address-lines", 0xF000, 0x8000, 512)["passed"]
+            )
+        self.m.identify()
+
+    def test_corrupt_diagnostic_result_stops_session(self):
+        original = self.m.execute
+        _, _, manifest = build_diagnostic("data-lines", 0xF000, 0x8000, 1)
+
+        def corrupt_result(*args, **kwargs):
+            result = original(*args, **kwargs)
+            self.peer.command(f"F {manifest['labels']['result_done']:x} ff 00")
+            return result
+
+        with patch.object(self.m, "execute", side_effect=corrupt_result):
+            with self.assertRaises(OutcomeUnknown):
+                run_diagnostic(self.m, "data-lines", 0xF000, 0x8000, 1)
+        with self.assertRaises(OutcomeUnknown):
+            self.m.identify()
+
+    def test_diagnostic_workspace_and_artifacts(self):
+        for args in (
+            ("ram-patterns", 0x8000, 0x8000, 256, 1),
+            ("data-lines", 0x7000, 0x8000, 2, 1),
+            ("address-lines", 0x7000, 0x100, 256, 3),
+        ):
+            with self.assertRaises(ValueError):
+                build_diagnostic(*args)
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "diagnostic"
+            result = run_diagnostic(
+                self.m, "ram-patterns", 0xF000, 0x8000, 256, artifacts=out
+            )
+            self.assertEqual(json.loads((out / "result.json").read_text()), result)
+            self.assertTrue((out / "snippet.asm").read_text())
+            self.assertTrue((out / "snippet.bin").read_bytes())
+        self.peer.command("F f003 ff ff")
+        before = len([x for x in self.peer.tx if x[1] == ord("G")])
+        with self.assertRaises(ValueError):
+            run_diagnostic(self.m, "data-lines", 0xF000, 0x8000, 1)
+        self.assertEqual(len([x for x in self.peer.tx if x[1] == ord("G")]), before)
 
     def test_changed_helper_stops_before_run(self):
         helper = BankedMonitor(self.m, 0xF000)

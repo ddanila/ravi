@@ -34,6 +34,7 @@ class Monitor:
         self.pending = deque()
         self.transaction = 0
         self.usable = True
+        self.attached = False
         self.events = []
         self.reserved = []
 
@@ -65,7 +66,7 @@ class Monitor:
     def _begin(self, op, bank=0, address=0, value=0, payload=b""):
         if not self.usable:
             raise OutcomeUnknown(
-                "session invalid after uncertain execution; reset and attach anew"
+                "session invalid after reset or execution uncertainty; reset and attach anew"
             )
         self.transaction = self.transaction % 255 + 1
         self.transport.write(
@@ -78,7 +79,13 @@ class Monitor:
             while self.pending:
                 r = self.pending.popleft()
                 self.events.append(asdict(r))
+                if r.status == p.RETURN and r.transaction == 0 and self.attached:
+                    self.usable = False
+                    raise ConnectionError(
+                        "target restarted during established W1 session"
+                    )
                 if r.transaction == self.transaction:
+                    self.attached = True
                     return r
             self.pending.extend(
                 self.parser.feed(

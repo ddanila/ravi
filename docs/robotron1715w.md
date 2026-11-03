@@ -221,3 +221,99 @@ S550 intact. Record physical results under PC001 separately from emulator tests.
 No hardware serial port is opened by builds or qualification. Emulator results
 cannot establish analog timing, real DRAM retention/refresh, PC001 ROM/PROM
 identity or recovery from arbitrary CPU faults.
+
+## Bounded diagnostic snippets
+
+The `diagnose` command builds, surveys, uploads and runs a small **stackless**
+RAM diagnostic, then reads a structured result and rechecks the immutable code.
+It never retries execution. These are destructive tests: the selected target
+range and the complete pages containing the workspace are overwritten.
+
+```sh
+# Sixteen walking-one/walking-zero comparisons at a single byte.
+.venv/bin/python -m ravi.backends.robotron1715w \
+  --port /dev/cu.usbserial-110 --log-dir sessions/data-lines-01 \
+  diagnose data-lines 0x8000 1 --workspace 0xf000
+# Fill the entire range, then verify it, for 00/FF/55/AA.
+.venv/bin/python -m ravi.backends.robotron1715w \
+  --port /dev/cu.usbserial-110 --log-dir sessions/ram-patterns-01 \
+  diagnose ram-patterns 0x8000 0x1000 --workspace 0xf000
+# Separate low/high CPU-address-byte passes expose aliases within this range.
+.venv/bin/python -m ravi.backends.robotron1715w \
+  --port /dev/cu.usbserial-110 --log-dir sessions/address-lines-01 \
+  diagnose address-lines 0x0100 0x1000 --workspace 0xf000 --bank 3
+```
+
+Ranges are limited to 4096 bytes per invocation; `data-lines` requires exactly
+one byte. A passing address test covers distinctions **within the selected
+range**, not every address pin or interactions with other banks/ranges. The
+pattern test is not a March/coupling/retention test. Longer campaigns should run
+explicitly selected bounded windows and retain each result.
+
+The workspace must begin at 4000h or above; banks 2–4 require C000h or above so
+code and its result remain visible while both read and write selectors switch.
+Unlike helper CALL's asymmetric initial mapping, these snippets deliberately
+select the **same target bank for reads and writes** and restore ROM visibility
+before returning. They do not need a helper or a RAM stack. Target bytes may not
+overlap workspace survey pages or an installed helper. Candidate workspace
+failure stops before RUN. The ABI preserves the transaction ID in the verified
+workspace and returns through ROM vector 0003h.
+
+Each run writes `diagnostic/snippet.asm`, `snippet.bin`, `manifest.json` and
+`result.json` alongside the usual serial evidence. The generated assembly can be
+rebuilt directly with `z80asm`; source templates ship in the wheel. The manifest
+records relocation, target bank/range, hash, result address, zero stack usage and
+a conservative bound of `20000 + 1000 * length` Z80 T-states for the snippet
+itself on the reference mapping, without external WAIT/bus stalls. Preparation,
+serial transfers and ROM return handling are additional. Execution has a
+five-second host deadline. A fault that changes instructions/control flow may
+violate the intended bound and require external reset.
+
+The ten-byte result record is `WD1`, kind (1=data, 2=patterns, 3=address), status
+(0=pass, 1=mismatch), failure address (little-endian), expected byte, actual byte,
+and completion marker A5. The marker is written last; untouched status is FF.
+The host checks signature, kind, marker, returned accumulator and code readback.
+Missing/corrupt/inconsistent results invalidate the session. Failure results
+contain the first observed mismatch and do not claim successful restoration of
+original contents. Use the JSON `passed` flag or CLI exit status for automation;
+transport/execution errors stop the run and remain in the evidence.
+
+## Independent MAME qualification and additional faults
+
+```sh
+.venv/bin/python tools/qualify_robotron1715w_mame.py \
+  --mame mame --media ../dac/public/media/robotron --output build/w1-mame
+```
+
+Tested with MAME 0.289 `rt1715w`, using the supplied CAS and keyboard ROM and the
+unchanged W1 boot image. The harness connects only a loopback TCP socket to
+MAME's null-modem device at its default 9600 8N1, flow control off. CPU execution,
+SIO/CTC2 clocking, bank transfers, helper CALL/RET and the three diagnostics all
+run inside unmodified MAME. Lua only reads PC and captures startup/final screens;
+it neither patches memory nor implements commands. Historical ROM files are
+removed from the output after execution; hashes, serial bytes, logs, generated
+observer script, screenshots and report remain. The custom boot-ROM checksum
+warning is expected. MAME is optional and this test needs caller-supplied media;
+the normal CI still runs the pinned DAC fixture with synthetic CAS test data.
+
+The Homebrew 0.289 build crashed when an earlier observer installed Lua I/O taps.
+The released runner avoids those taps. Main-RAM-free startup is checked by DAC's
+access traps, not claimed as a separately instrumented MAME result. MAME's actual
+screen scanout is captured independently; this is still not physical validation.
+Reference wiring is in [MAME's versioned driver](https://github.com/mamedev/mame/blob/mame0289/src/mame/robotron/rt1715.cpp),
+with serial framing in its [null-modem device](https://github.com/mamedev/mame/blob/mame0289/src/devices/bus/rs232/null_modem.cpp).
+
+The expanded DAC suite drops/duplicates each byte of command headers and write
+payloads, corrupts replies, injects resets at partial-frame boundaries and during
+an active write, corrupts a helper return address, injects address aliases and
+invalidates corrupted diagnostic results. The fixture's reset retains RAM but
+resets CPU/devices; it is not a power-cycle/DRAM-retention model.
+
+A startup banner received after a matched response now invalidates the host
+session. It cannot be mistaken for successful completion of an interrupted
+write or RUN. Initial attach accepts the startup banner; there is still no
+persistent boot identity, so a lost banner cannot provide reset detection.
+Partial writes survive reset in the fixture and are never represented as rolled
+back. The ROM does not deduplicate complete valid frames: duplicated valid RUNs
+could execute twice. The host never automatically retransmits mutations or RUN,
+and no exactly-once guarantee is claimed for a transport that duplicates frames.
