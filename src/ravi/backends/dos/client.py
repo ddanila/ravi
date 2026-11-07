@@ -51,10 +51,12 @@ class TransferStats:
     bytes: int
     elapsed: float
     crc32: int
+    skipped: bool = False
+    resumed_bytes: int = 0
 
     @property
     def bytes_per_second(self) -> float:
-        return self.bytes / self.elapsed if self.elapsed else float("inf")
+        return (self.bytes - self.resumed_bytes) / self.elapsed if self.elapsed else 0.0
 
 
 @dataclass(frozen=True)
@@ -124,11 +126,20 @@ class Client:
                 }
             )
             self.transport.write(encoded)
-            completion = CompletionDeadline(time.monotonic() + self.timeout)
+            # Small upload chunks should not incur a 20-second recovery wait.
+            # CRC scans and EXEC retain their separate, potentially longer limits.
+            request_timeout = (
+                min(self.timeout, 5.0) if command == Command.PUT_DATA else self.timeout
+            )
+            started = time.monotonic()
+            received_bytes = 0
+            rejected_before = self.decoder.rejected_frames
+            completion = CompletionDeadline(started + request_timeout)
             while time.monotonic() < completion.deadline:
                 data = self.transport.read(1024, completion.remaining(time.monotonic()))
                 if not data:
                     continue
+                received_bytes += len(data)
                 for received in self.decoder.feed(data):
                     if (
                         received.frame_type == FrameType.EVENT
@@ -181,11 +192,18 @@ class Client:
                         )
                         raise RemoteError(command, status, message, values)
                     return values
+            self.event(
+                {
+                    "direction": "timeout",
+                    "transaction": txid,
+                    "command": command.name,
+                    "attempt": attempt,
+                    "elapsed_seconds": time.monotonic() - started,
+                    "received_bytes": received_bytes,
+                    "rejected_frames": self.decoder.rejected_frames - rejected_before,
+                }
+            )
             completion.check_retry()
-        raise TransportError(
-            "EXEC completion timed out after STARTED; outcome unknown; "
-            "request was not retransmitted"
-        )
         raise TransportError(
             f"{command.name} timed out after {self.retries + 1} attempts"
         )
@@ -225,10 +243,42 @@ class Client:
         self.request(Command.REMOVE, tlv_text(Tag.PATH, remote))
 
     def put(
-        self, local: str | Path, remote: str, chunk_size: int = 512
+        self,
+        local: str | Path,
+        remote: str,
+        chunk_size: int = 512,
+        *,
+        skip_existing: bool = True,
     ) -> TransferStats:
+        if not 1 <= chunk_size <= 512:
+            raise ValueError("upload chunk_size must be between 1 and 512")
+        started = time.monotonic()
         data = Path(local).read_bytes()
         expected = file_crc32(data)
+        if skip_existing:
+            try:
+                identity = self.crc(remote)
+            except RemoteError as exc:
+                if exc.status != Status.NOT_FOUND:
+                    raise
+            else:
+                if identity == (len(data), expected):
+                    self.event(
+                        {
+                            "direction": "skip",
+                            "command": "PUT",
+                            "path": remote,
+                            "bytes": len(data),
+                            "crc32": f"{expected:08x}",
+                        }
+                    )
+                    return TransferStats(
+                        len(data),
+                        time.monotonic() - started,
+                        expected,
+                        skipped=True,
+                        resumed_bytes=len(data),
+                    )
         begin = self.request(
             Command.PUT_BEGIN,
             tlv_text(Tag.PATH, remote),
@@ -240,7 +290,7 @@ class Client:
             raise RemoteError(
                 Command.PUT_BEGIN, Status.OFFSET_MISMATCH, "remote offset exceeds input"
             )
-        started = time.monotonic()
+        resumed_bytes = offset
         while offset < len(data):
             chunk = data[offset : offset + chunk_size]
             try:
@@ -285,7 +335,9 @@ class Client:
         actual = as_u32(first(values, Tag.CRC32))
         if actual != expected:
             raise RemoteError(Command.PUT_COMMIT, Status.CRC_MISMATCH)
-        return TransferStats(len(data), time.monotonic() - started, actual)
+        return TransferStats(
+            len(data), time.monotonic() - started, actual, resumed_bytes=resumed_bytes
+        )
 
     def get(
         self, remote: str, local: str | Path, chunk_size: int = 512

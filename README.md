@@ -77,3 +77,14 @@ The current 2 KiB W2 ROM adds serial-first stage reports, a build fingerprint,
 full-ROM CRC, retained verification samples and efficient block reads. The host
 still supports the preserved W1 baseline; see the guide for framing and build
 requirements.
+
+## DOS transfer reuse and diagnostics
+
+DOS uploads compare remote size/CRC32 by default and skip matching files.
+`Client.put(..., skip_existing=False)` forces a transfer for link tests.
+`TransferStats.skipped` and `resumed_bytes` distinguish reuse from transferred
+payload; upload throughput excludes reused bytes. Only NOT_FOUND permits a new upload
+after an identity-query failure. PUT_DATA retry waits are capped at five seconds;
+CRC and execution deadlines retain their configured limits. Timeout events
+record elapsed time, received bytes and rejected frames, and identify the actual
+command. EXEC after STARTED retains its no-retransmission guarantee.

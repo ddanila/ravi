@@ -187,6 +187,7 @@ class FrameDecoder:
         self.max_encoded = max_encoded
         self.buffer = bytearray()
         self.discarding = False
+        self.rejected_frames = 0
 
     def feed(self, data: bytes) -> list[Frame]:
         frames: list[Frame] = []
@@ -202,7 +203,7 @@ class FrameDecoder:
                     try:
                         frames.append(Frame.decode(candidate))
                     except ProtocolError:
-                        pass
+                        self.rejected_frames += 1
                 continue
             if self.discarding:
                 continue
@@ -210,6 +211,7 @@ class FrameDecoder:
             if len(self.buffer) > self.max_encoded:
                 self.buffer.clear()
                 self.discarding = True
+                self.rejected_frames += 1
         return frames
 
 
