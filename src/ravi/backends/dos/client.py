@@ -250,8 +250,8 @@ class Client:
         *,
         skip_existing: bool = True,
     ) -> TransferStats:
-        if not 1 <= chunk_size <= 512:
-            raise ValueError("upload chunk_size must be between 1 and 512")
+        if not 1 <= chunk_size <= 1024:
+            raise ValueError("upload chunk_size must be between 1 and 1024")
         started = time.monotonic()
         data = Path(local).read_bytes()
         expected = file_crc32(data)

@@ -40,6 +40,15 @@ class DOSUploadTests(unittest.TestCase):
                 client.put(source, "READER.COM")
             client.request.assert_not_called()
 
+    def test_upload_chunk_limit_matches_dos_agent(self):
+        client = Client(LoopbackTransport(lambda data: b""))
+        for chunk in (0, 1025):
+            with self.assertRaises(ValueError):
+                client.put("unused", "READER.COM", chunk_size=chunk)
+        # A valid 1024-byte request must proceed past argument validation.
+        with self.assertRaises(FileNotFoundError):
+            client.put("/nonexistent/ravi-test-source", "READER.COM", chunk_size=1024)
+
     def test_decoder_counts_bad_frames_and_recovers(self):
         decoder = FrameDecoder(max_encoded=32)
         valid = Frame(FrameType.REQUEST, 7, payload=b"ok").encode()
