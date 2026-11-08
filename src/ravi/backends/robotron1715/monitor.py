@@ -115,6 +115,29 @@ class Monitor:
         if self._hex_response(b"WROTE ", len(data)) != data:
             raise BootError("write readback mismatch; no automatic retry")
 
+    def start(self, address: int, timeout: float = 15) -> None:
+        """Transfer control permanently; consume GO only, leaving guest bytes unread.
+
+        The caller must hand the same transport to the runtime service. No
+        READY is expected, and a failed/uncertain start must never be replayed.
+        """
+        if not 0x1000 <= address <= 0xFFFF or 0x4000 <= address < 0x5000:
+            raise ValueError("protected entry address")
+        if timeout <= 0:
+            raise ValueError("positive timeout required")
+        self._send(b"G" + address.to_bytes(2, "little"))
+        deadline = time.monotonic() + timeout
+        for expected in b"GO\r\n":
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise BootError("monitor handoff timeout; do not replay")
+                received = self.transport.read(1, remaining)
+                if received:
+                    if received != bytes([expected]):
+                        raise BootError(f"unexpected handoff byte: {received!r}; do not replay")
+                    break
+
     def call(self, address: int) -> list[bytes]:
         if not 0x1000 <= address <= 0xFFFF or 0x4000 <= address < 0x5000:
             raise ValueError("protected entry address")

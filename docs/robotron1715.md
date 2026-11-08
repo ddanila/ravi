@@ -242,3 +242,14 @@ A0 aliasing, continued commands after failures, control-page restoration,
 protected ranges, partial-write timeout, upload/readback and call/return. The
 original smoke test is also checked on healthy/faulty RAM. This is a byte-level
 SIO model, not electrical/baud-rate validation of the new monitor on MB001.
+
+## Handing the open transport to a runtime service
+
+`Monitor.start(address, timeout=15)` sends the monitor G command and consumes
+exactly `GO\r\n`. It does not wait for another READY prompt, close the port,
+flush input, or retry execution after a timeout. Bytes sent by the guest after
+GO remain queued for the runtime service. Use this method instead of a normal
+monitor command when transferring ownership to an N4/NetDisk host; pass the
+same open descriptor to that service. The caller must verify the uploaded
+program before starting it. A failed handoff requires diagnosis, not replay of
+the execution command. `tests/test_robotron_handoff.py` exercises this boundary.
