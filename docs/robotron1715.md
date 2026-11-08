@@ -253,3 +253,11 @@ monitor command when transferring ownership to an N4/NetDisk host; pass the
 same open descriptor to that service. The caller must verify the uploaded
 program before starting it. A failed handoff requires diagnosis, not replay of
 the execution command. `tests/test_robotron_handoff.py` exercises this boundary.
+
+`SerialTransport(..., exclusive=True)` acquires a nonblocking descriptor lock
+and POSIX TIOCEXCL before changing termios. The owner can pass inherited copies
+to a runtime service and retain its original descriptor across service restarts.
+Close releases exclusivity even when restoring disconnected-device settings
+fails. The default remains non-exclusive for existing callers. The Robotron
+CP/M unattended supervisor additionally checks visible existing owners before
+opening the physical device.

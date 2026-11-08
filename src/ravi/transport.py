@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import select
 import socket
@@ -129,7 +130,8 @@ class SerialTransport(Transport):
     """Raw eight-bit POSIX serial transport without software/hardware flow control."""
 
     def __init__(
-        self, device: str, baud: int = 38400, *, parity: str = "N", stop_bits: int = 1
+        self, device: str, baud: int = 38400, *, parity: str = "N", stop_bits: int = 1,
+        exclusive: bool = False,
     ):
         if baud not in _BAUDS:
             raise ValueError(f"unsupported baud {baud}")
@@ -137,7 +139,12 @@ class SerialTransport(Transport):
             raise ValueError("parity must be N/O/E and stop_bits must be 1/2")
         self.fd = os.open(device, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         self.original_attrs = None
+        self.exclusive = False
         try:
+            if exclusive:
+                fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.ioctl(self.fd, termios.TIOCEXCL)
+                self.exclusive = True
             attrs = termios.tcgetattr(self.fd)
             self.original_attrs = [*attrs[:6], list(attrs[6])]
             attrs[0] = 0
@@ -177,7 +184,11 @@ class SerialTransport(Transport):
                 if self.original_attrs is not None:
                     termios.tcsetattr(fd, termios.TCSANOW, self.original_attrs)
             finally:
-                os.close(fd)
+                try:
+                    if self.exclusive:
+                        fcntl.ioctl(fd, termios.TIOCNXCL)
+                finally:
+                    os.close(fd)
 
 
 class SocketTransport(Transport):
