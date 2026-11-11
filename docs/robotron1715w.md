@@ -441,3 +441,108 @@ It can switch the specifically qualified W2 build to 1200 baud using a
 readback-verified RAM shim, without reburning the EPROM. W3 starts at that
 rate directly. Emulator qualification does not constitute physical W3
 qualification.
+
+## W4 / firmware 4.0.0 burn candidate
+
+The new `src/ravi/backends/robotron1715w/rom-w4.bin` is an exact 2048-byte
+2716 image. It is a **burn candidate, not physically qualified firmware**.
+W2 and W3 files are preserved byte for byte. Build with:
+
+```sh
+python -m ravi.backends.robotron1715w.build --version W4 \
+  --output src/ravi/backends/robotron1715w/rom-w4.bin
+```
+
+The sidecar JSON contains the canonical build fingerprint, full SHA-256,
+firmware version, clocks and size. Firmware 4.0.0 uses protocol W4; these are
+separate fields. The current image uses 1434 bytes, leaves 612 padding bytes,
+and reserves the final two bytes for the whole-ROM CCITT checksum. The ROM
+has no stack, main-RAM workspace or video-RAM protocol state; NMI must remain
+inactive, as with W2/W3. The arithmetic CCITT update takes 152 clocks (157
+including the test's HALT) and exhaustively matches the independent reference.
+
+Cold start programs A5 counter control 47h and SIO x16 8N1. It scans
+62400, 41600 and 9600 using constants 2, 3 and 13. Each dwell is about half
+a second of idle polling; pending confirmation has twice that budget. Noise
+consumes the idle budget. Malformed or incomplete frames before connection
+cause an error and advance scanning; valid identity queries extend the current
+window so a host can finish identification. Data-receive polling is bounded.
+A confirmed connection stays at its rate indefinitely, including idle periods
+and damaged requests. Only release, cold start, or cooperative program return
+restarts discovery. This is speed discovery, not arbitrary-rate autobaud.
+
+### W4 wire additions
+
+All requests retain the existing nine-byte CRC-protected frame and transaction
+byte. Existing I/V/K, memory and GO framing remain available. Capabilities are
+127: legacy bits 0–4, bit 5 discovery/handshake, bit 6 information.
+
+- Discovery status 13, transaction 0: bank is speed index (0=62400, 1=41600,
+  2=9600), address 0400h indicates firmware major/minor, value 4 is protocol.
+- `H`: bank/value zero, address is a fresh nonzero 16-bit host token. OK echoes
+  the token and disables memory commands pending confirmation. It also works
+  when reconnecting to a locked monitor.
+- `C`: same fields/token; matching pending state locks the speed and returns OK.
+  A stale/wrong confirmation fails. Lost acknowledgements are recovered with a
+  fresh H/C exchange, never by replaying memory writes or GO.
+- `N`: BLOCK response containing 12 descriptor bytes: schema=1, version 4/0/0,
+  machine=1 (W/M), protocol=4, capability mask, speed mask=7, framing=0 (8N1),
+  multiplier=16, block maximum=64, reserved=0. Header bank is current speed
+  index; address is the descriptor's ROM location.
+- `X`: locked-session release. OK is fully transmitted before scanning resumes.
+- Status 14: not connected. Before confirmation only I/V/K/N/H/C are accepted.
+- UART failures retain the raw SIO RR1 error bits in value (10h parity,
+  20h overrun, 40h framing). Host logs retain per-command error evidence.
+
+These CRCs and tokens protect against noise and stale exchanges; they are not
+cryptographic authentication. A rejected or timed-out write may already have
+modified scratch RAM, so no automatic mutation retry is introduced.
+
+A cooperative diagnostic returns to 0003h after restoring ROM mapping, with
+C=request transaction and A=result. W4 explicitly restores 62400, emits RETURN,
+and restarts discovery. `Monitor.execute()` therefore permits W4 cooperative
+calls only at 62400 and preserves the returned result; its next operation
+re-identifies. At other rates use `start()` and rediscover afterwards; do not
+expect a return result at the old rate. Uncooperative programs and RESET are
+not promised to restore ROM mapping.
+
+### Headless host and optional numeric display
+
+```sh
+python -m ravi.backends.robotron1715w --port /dev/cu.usbserial-2110 \
+  --baud auto --log-dir /tmp/w4-probe probe
+```
+
+The host prints identity, fingerprint, integrity and rate, and saves structured
+results/raw captures. Auto tries 62400/41600/9600 plus legacy 1200. Explicit
+`--baud 62400`, `41600` or `9600` selects a fixed listening speed. Custom speeds
+currently use the qualified macOS PL2303HXD endpoint-zero divisor override;
+unsupported adapters can use standard 9600. No root access or driver detachment
+is performed. W2/W3 retain their existing clock/compatibility paths.
+
+The reduced font preserves 0–F and a dot. The display shows `4.0.0`; subsequent
+numeric cells show state (0=scanning, 1=locked, 2=pending), speed index and last
+status. Per-byte display work was removed. Serial startup precedes video work,
+and no video board is required. Host output supplies the explanatory strings.
+
+### Burning and physical acceptance
+
+Use the full 2048-byte file at EPROM offset zero, without headers, banking or
+byte swapping. Use the programmer's supported 2716 device profile; verify its
+readback against the binary and SHA-256 manifest. Keep the installed W2 EPROM
+as rollback. The physical chip installation and power cycle are user actions.
+
+After installation, first identify the ROM without writing RAM. Then run:
+
+```sh
+python tools/qualify_w4_hardware.py --port /dev/cu.usbserial-2110 \
+  --output local/w4-hardware
+```
+
+This explicitly overwrites 8000h–8FFFh, tests 9600 and 41600, then performs a
+30-minute 62400 random-data soak with independent readback. It fails on transfer
+errors rather than silently retrying. Do not run alongside a CP/M host. Save
+its evidence, perform 20 power-off/on starts and record successful discovery
+and integrity each time. Test RESET separately; a reset is not a power cycle.
+Finally use the CP/M project's W4 launcher for boot/copy/warm-boot tests at all
+three speeds. No physical qualification claim is made until these pass.

@@ -13,7 +13,7 @@ from ravi.transport import LoggedTransport, SerialTransport
 
 from .banked import BankAddress, BankedMonitor
 from .diagnostic import KINDS, build_diagnostic, run_diagnostic
-from .host import Monitor
+from .discovery import discover, identify_at_rate
 
 
 def number(value):
@@ -61,7 +61,12 @@ def main(argv=None):
     )
     parser.add_argument("--log-dir", type=Path, help="new directory for evidence")
     parser.add_argument("--timeout", type=float, default=5)
-    parser.add_argument("--baud", type=int, choices=(1200, 9600), default=9600, help="W3 uses 1200; archived W1/W2 use 9600")
+    parser.add_argument(
+        "--baud",
+        choices=("auto", "1200", "9600", "41600", "62400"),
+        default="auto",
+        help="W4 defaults to 62400 discovery; W2=9600, W3=1200",
+    )
     parser.add_argument(
         "--helper",
         type=number,
@@ -69,6 +74,7 @@ def main(argv=None):
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("ports", help="list candidates without opening them")
+    sub.add_parser("release", help="unlock W4 and resume speed discovery")
     sub.add_parser("probe", help="identify the custom ROM only")
     read = sub.add_parser("read")
     read.add_argument("address", type=number)
@@ -155,10 +161,30 @@ def main(argv=None):
             tx = stack.enter_context((args.log_dir / "tx.bin").open("wb"))
             rx = stack.enter_context((args.log_dir / "rx.bin").open("wb"))
             port = stack.enter_context(
-                SerialTransport(args.port, args.baud, parity="N", stop_bits=1)
+                SerialTransport(
+                    args.port,
+                    int(args.baud) if args.baud in ("1200", "9600") else 9600,
+                    parity="N",
+                    stop_bits=1,
+                    exclusive=True,
+                )
             )
-            m = Monitor(LoggedTransport(port, rx, tx), args.timeout)
-            result["identity"] = m.identify()
+            wire = LoggedTransport(port, rx, tx)
+            if args.baud in ("1200", "9600"):
+                m = identify_at_rate(wire, args.timeout)
+                result["identity"] = m.identity
+            else:
+                m, result["discovery"] = discover(
+                    port, wire, args.port, args.baud, args.timeout
+                )
+                result["identity"] = m.identity
+            identity = result["identity"]
+            print(
+                f"{identity.get('machine_family', 'Robotron 1715M/W')} ROM {identity.get('firmware_version', identity['protocol'])}, build {identity.get('build_id', 'legacy')}, {identity.get('rom_integrity', 'unchecked')}, {identity.get('baud', args.baud)} 8N1",
+                file=__import__("sys").stderr,
+            )
+            if args.command == "release":
+                m.release()
             helper = None
             if args.helper is not None:
                 helper = BankedMonitor(m, args.helper)

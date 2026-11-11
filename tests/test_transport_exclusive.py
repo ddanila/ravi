@@ -1,6 +1,7 @@
 import os
 import pty
 import unittest
+
 from ravi.transport import SerialTransport
 
 

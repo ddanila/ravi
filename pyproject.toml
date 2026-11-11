@@ -15,7 +15,7 @@ authors = [{name = "Danila Sukharev"}]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"ravi.backends.robotron1715w" = ["rom.asm", "rom.bin", "rom.json", "rom-w3.bin", "rom-w3.json", "helper.asm", "diagnostics/*.asm", "baseline/rom.asm", "baseline/rom.bin", "baseline/rom.json"]
+"ravi.backends.robotron1715w" = ["rom.asm", "rom.bin", "rom.json", "rom-w3.bin", "rom-w3.json", "rom-w4.asm", "rom-w4.bin", "rom-w4.json", "helper.asm", "diagnostics/*.asm", "baseline/rom.asm", "baseline/rom.bin", "baseline/rom.json"]
 "ravi.backends.robotron1715" = ["smoke.asm", "smoke.bin", "monitor.asm", "monitor.bin"]
 
 [project.optional-dependencies]

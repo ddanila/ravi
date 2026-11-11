@@ -118,7 +118,6 @@ class FirmwareTests(unittest.TestCase):
     def tearDown(self):
         self.peer.close()
 
-
     def test_w3_reproducible_and_headless(self):
         image, _ = build_rom("W3")
         self.assertEqual(image, (ROOT / "rom-w3.bin").read_bytes())
@@ -291,12 +290,20 @@ class FirmwareTests(unittest.TestCase):
                 ):
                     self.assertEqual(
                         cli(
-                            ["--port", "offline-peer", "--log-dir", str(logs)] + command
+                            [
+                                "--port",
+                                "offline-peer",
+                                "--baud",
+                                "9600",
+                                "--log-dir",
+                                str(logs),
+                            ]
+                            + command
                         ),
                         0,
                     )
                     serial.assert_called_once_with(
-                        "offline-peer", 9600, parity="N", stop_bits=1
+                        "offline-peer", 9600, parity="N", stop_bits=1, exclusive=True
                     )
                 result = json.loads((logs / "result.json").read_text())
                 self.assertTrue(result["success"])

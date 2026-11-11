@@ -130,7 +130,12 @@ class SerialTransport(Transport):
     """Raw eight-bit POSIX serial transport without software/hardware flow control."""
 
     def __init__(
-        self, device: str, baud: int = 38400, *, parity: str = "N", stop_bits: int = 1,
+        self,
+        device: str,
+        baud: int = 38400,
+        *,
+        parity: str = "N",
+        stop_bits: int = 1,
         exclusive: bool = False,
     ):
         if baud not in _BAUDS:

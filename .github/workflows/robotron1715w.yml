@@ -1,4 +1,4 @@
-name: W1/W2/W3 firmware qualification
+name: W1/W2/W3/W4 firmware qualification
 on:
   push:
     branches: [main]
@@ -26,7 +26,7 @@ concurrency:
 jobs:
   firmware:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

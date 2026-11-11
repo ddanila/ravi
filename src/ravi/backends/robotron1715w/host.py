@@ -1,6 +1,7 @@
 """Host policy for W1. No automatic retries of memory mutation or execution."""
 
 import math
+import secrets
 import time
 from collections import deque
 from dataclasses import asdict
@@ -115,7 +116,7 @@ class Monitor:
 
     def identify(self):
         r = self._ok(self._begin("I"))
-        if r.address != 2048 or r.value not in (1, 2, 3):
+        if r.address != 2048 or r.value not in (1, 2, 3, 4):
             raise ValueError("unexpected W1/W2 identity")
         info = {
             "target": "robotron1715w",
@@ -127,8 +128,55 @@ class Monitor:
             "replay_scope": "none",
             "capabilities": r.bank if r.value >= 2 else 0,
         }
+        if r.value == 4:
+            if r.bank & (p.CAP_DISCOVERY | p.CAP_INFO) != (
+                p.CAP_DISCOVERY | p.CAP_INFO
+            ):
+                raise ValueError("W4 requires discovery and information capabilities")
+            token = secrets.randbelow(65535) + 1
+            for op in ("H", "C"):
+                reply = self._ok(self._begin(op, address=token))
+                if (reply.bank, reply.address, reply.value) != (0, token, 0):
+                    raise ValueError("W4 handshake token mismatch")
+            desc = self._reply(self._begin("N"))
+            if not isinstance(desc, p.BlockResponse) or len(desc.data) != 12:
+                raise ValueError("Invalid W4 descriptor")
+            (
+                schema,
+                major,
+                minor,
+                patch,
+                machine,
+                proto,
+                caps,
+                rates,
+                framing,
+                mult,
+                block,
+                reserved,
+            ) = desc.data
+            if (schema, machine, proto, framing, mult, block, reserved) != (
+                1,
+                1,
+                4,
+                0,
+                16,
+                64,
+                0,
+            ) or desc.bank >= len(p.BAUDS):
+                raise ValueError("Unsupported W4 descriptor")
+            if caps != r.bank or rates != 7:
+                raise ValueError("Inconsistent W4 capabilities")
+            info.update(
+                firmware_version=f"{major}.{minor}.{patch}",
+                machine_family="Robotron 1715M/W",
+                baud=p.BAUDS[desc.bank],
+                supported_bauds=list(p.BAUDS),
+                framing="8N1",
+                clock_multiplier=16,
+            )
         if r.value >= 2:
-            if r.bank != 31:
+            if r.bank & 31 != 31:
                 raise ValueError("unsupported W2 capability set")
             version = self._reply(self._begin("V"))
             if (
@@ -145,6 +193,14 @@ class Monitor:
             info["rom_integrity"] = "CRC16 residue zero"
         self.identity = info
         return info
+
+    def release(self):
+        """Explicitly unlock W4 and resume scanning; never replay this operation."""
+        self._ensure_identity()
+        if self.identity["protocol"] != "W4":
+            raise ValueError("release requires W4")
+        self._ok(self._begin("X"))
+        self.usable = False
 
     def _ensure_identity(self):
         if self.identity is None:
@@ -239,6 +295,10 @@ class Monitor:
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("execution timeout must be positive")
         self._ensure_identity()
+        if self.identity.get("protocol") == "W4" and self.identity.get("baud") != 62400:
+            raise ValueError(
+                "W4 cooperative return uses 62400; use start() and rediscover for other rates"
+            )
         # Even losing STARTED leaves execution uncertain; never resend GO.
         try:
             r = self._reply(self._begin("G", 1, address))
@@ -249,6 +309,10 @@ class Monitor:
             r = self._reply(time.monotonic() + timeout)
             if r.status != p.RETURN:
                 raise ValueError("missing RETURN")
+            if self.identity.get("protocol") == "W4":
+                # RETURN is confirmed. The ROM now scans; next operation reconnects.
+                self.identity = None
+                self.attached = False
             return {"transaction": r.transaction, "accumulator": r.value}
         except MonitorError:
             raise
@@ -271,7 +335,9 @@ class Monitor:
         try:
             deadline = self._begin("G", 1, address)
             while time.monotonic() < deadline:
-                replies = self.parser.feed(self.transport.read(1, max(0, deadline-time.monotonic())))
+                replies = self.parser.feed(
+                    self.transport.read(1, max(0, deadline - time.monotonic()))
+                )
                 for reply in replies:
                     self.events.append(asdict(reply))
                     if reply.transaction != self.transaction:
@@ -281,6 +347,8 @@ class Monitor:
                     return
             raise TimeoutError("runtime handoff deadline expired; do not replay")
         except Exception as exc:
-            raise OutcomeUnknown(f"runtime handoff failed; reset required: {exc}") from exc
+            raise OutcomeUnknown(
+                f"runtime handoff failed; reset required: {exc}"
+            ) from exc
         finally:
             self.usable = False

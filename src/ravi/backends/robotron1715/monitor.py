@@ -135,7 +135,9 @@ class Monitor:
                 received = self.transport.read(1, remaining)
                 if received:
                     if received != bytes([expected]):
-                        raise BootError(f"unexpected handoff byte: {received!r}; do not replay")
+                        raise BootError(
+                            f"unexpected handoff byte: {received!r}; do not replay"
+                        )
                     break
 
     def call(self, address: int) -> list[bytes]:

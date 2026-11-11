@@ -53,6 +53,7 @@ def main():
         PYTHONPATH=str(ROOT / "src"),
         RAVI_W_FIXTURE=str(args.emulator / "build/robotron-rom-monitor"),
         RAVI_W_CAS=str(cas),
+        RAVI_W_EMULATOR=str(args.emulator),
     )
     proc = subprocess.run(
         [
@@ -63,7 +64,7 @@ def main():
             "-s",
             str(ROOT / "tests"),
             "-p",
-            "test_robotron1715w.py",
+            "test_robotron1715w*.py",
             "-v",
         ],
         env=env,
@@ -103,6 +104,9 @@ def main():
         if args.cas
         else "synthetic reference-layout test data",
         "physical_qualification": False,
+        "w4": json.loads(
+            (ROOT / "src/ravi/backends/robotron1715w/rom-w4.json").read_text()
+        ),
         "limits": [
             "No PC001 ROM/PROM or wiring identity inferred.",
             "No analog DRAM retention/refresh or CPU bus-stall proof.",
