@@ -60,7 +60,8 @@ def main(argv=None):
         "--port", help="explicit RS-232 device; never chosen automatically"
     )
     parser.add_argument("--log-dir", type=Path, help="new directory for evidence")
-    parser.add_argument("--timeout", type=float, default=3)
+    parser.add_argument("--timeout", type=float, default=5)
+    parser.add_argument("--baud", type=int, choices=(1200, 9600), default=9600, help="W3 uses 1200; archived W1/W2 use 9600")
     parser.add_argument(
         "--helper",
         type=number,
@@ -142,7 +143,7 @@ def main(argv=None):
     result = {
         "target": "PC1715W/M custom W1/W2 ROM",
         "port": args.port,
-        "format": "9600 8N1",
+        "format": f"{args.baud} 8N1",
         "command": args.command,
         "started_unix": time.time(),
         "success": False,
@@ -154,7 +155,7 @@ def main(argv=None):
             tx = stack.enter_context((args.log_dir / "tx.bin").open("wb"))
             rx = stack.enter_context((args.log_dir / "rx.bin").open("wb"))
             port = stack.enter_context(
-                SerialTransport(args.port, 9600, parity="N", stop_bits=1)
+                SerialTransport(args.port, args.baud, parity="N", stop_bits=1)
             )
             m = Monitor(LoggedTransport(port, rx, tx), args.timeout)
             result["identity"] = m.identify()

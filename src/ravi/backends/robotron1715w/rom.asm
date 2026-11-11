@@ -172,14 +172,22 @@ configure:
  ld a,7
  out (009h),a
  out (00ah),a
+ if W3
+ ld a,13
+ else
  ld a,26
+ endif
  out (009h),a
  out (00ah),a
  ld a,018h
  out (00fh),a
  ld a,4
  out (00fh),a
+ if W3
+ ld a,044h
+ else
  ld a,4
+ endif
  out (00fh),a
  ld a,3
  out (00fh),a
@@ -442,7 +450,11 @@ version:
 identify:
  ld d,31 ; stage markers, build ID, ROM CRC, captured faults, block reads
  ld hl,0800h
+ if W3
+ ld e,3
+ else
  ld e,2
+ endif
  xor a
  jp response
 execute:

@@ -82,7 +82,7 @@ class Monitor:
                 event = asdict(r)
                 if r.status == p.BOOT:
                     event["stage"] = p.STAGES.get(r.value, "UNKNOWN")
-                    if r.value == 2:
+                    if r.value >= 2:
                         event["rom_crc_ok"] = r.bank == 0 and r.address == 0
                 self.events.append(event)
                 if r.status == p.ROM_BAD:
@@ -115,7 +115,7 @@ class Monitor:
 
     def identify(self):
         r = self._ok(self._begin("I"))
-        if r.address != 2048 or r.value not in (1, 2):
+        if r.address != 2048 or r.value not in (1, 2, 3):
             raise ValueError("unexpected W1/W2 identity")
         info = {
             "target": "robotron1715w",
@@ -125,9 +125,9 @@ class Monitor:
             "max_block": p.MAX_BLOCK,
             "boot_identity": None,
             "replay_scope": "none",
-            "capabilities": r.bank if r.value == 2 else 0,
+            "capabilities": r.bank if r.value >= 2 else 0,
         }
-        if r.value == 2:
+        if r.value >= 2:
             if r.bank != 31:
                 raise ValueError("unsupported W2 capability set")
             version = self._reply(self._begin("V"))
@@ -257,3 +257,30 @@ class Monitor:
             raise OutcomeUnknown(
                 f"execution outcome unknown; reset required: {exc}"
             ) from exc
+
+    def start(self, address):
+        """One-way handoff: consume exactly STARTED, leave runtime bytes unread.
+
+        The caller owns the same serial descriptor until runtime adoption.
+        No read-ahead, retries, or cooperative RETURN expectation is allowed.
+        """
+        self._range(address, 1)
+        self._ensure_identity()
+        if self.pending or self.parser.buffer:
+            raise ValueError("pending monitor data before runtime handoff")
+        try:
+            deadline = self._begin("G", 1, address)
+            while time.monotonic() < deadline:
+                replies = self.parser.feed(self.transport.read(1, max(0, deadline-time.monotonic())))
+                for reply in replies:
+                    self.events.append(asdict(reply))
+                    if reply.transaction != self.transaction:
+                        raise ValueError("unexpected frame during handoff")
+                    if reply.status != p.STARTED:
+                        raise MonitorError(reply)
+                    return
+            raise TimeoutError("runtime handoff deadline expired; do not replay")
+        except Exception as exc:
+            raise OutcomeUnknown(f"runtime handoff failed; reset required: {exc}") from exc
+        finally:
+            self.usable = False

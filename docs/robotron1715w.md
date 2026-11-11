@@ -417,3 +417,27 @@ no-RAM serial-first startup, startup with a stalled transmitter, captured
 one-read RAM faults and block/legacy reply lengths. The MAME runner checks W2
 stages, manifest identity, checksum success and block traffic through the actual
 emulated serial path in addition to the existing bank/diagnostic exercises.
+
+## W3 serial clock correction
+
+W3 uses CTC prescale 16, time constant 13, and SIO B x16 asynchronous
+sampling: **1200 baud, 8N1**. W2 remains byte-for-byte available at 9600
+baud x1 for installed-ROM compatibility. Independent RS-232 clocks need
+oversampling; x1 reception is phase-sensitive.
+
+Build with `python -m ravi.backends.robotron1715w.build --version W3`.
+The checked-in `src/ravi/backends/robotron1715w/rom-w3.bin` is a 2048-byte
+2716 image. Its JSON sidecar records its fingerprint and space use.
+Use the monitor CLI with `--baud 1200` for W3. Identity reports protocol W3;
+this is distinct from the Kaypro ROM version numbering.
+
+`Monitor.start(address)` transfers control without waiting for a return.
+It consumes exactly the STARTED acknowledgement, leaving subsequent serial
+bytes for the runtime owner. A missing or damaged acknowledgement has an
+unknown execution outcome and must never trigger an automatic GO retry.
+
+The CP/M W/M launcher lives in `ddanila/cpm-plus-1715/tools/serial_wm.py`.
+It can switch the specifically qualified W2 build to 1200 baud using a
+readback-verified RAM shim, without reburning the EPROM. W3 starts at that
+rate directly. Emulator qualification does not constitute physical W3
+qualification.

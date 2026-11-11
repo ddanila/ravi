@@ -33,8 +33,10 @@ def assemble(source: str):
         return (base / "image.bin").read_bytes(), labels
 
 
-def build_rom():
-    image, labels = assemble((ROOT / "rom.asm").read_text())
+def build_rom(version="W2"):
+    if version not in ("W2", "W3"):
+        raise ValueError("ROM version must be W2 or W3")
+    image, labels = assemble(f"W3: equ {int(version == 'W3')}\n" + (ROOT / "rom.asm").read_text())
     if len(image) != 2048 or labels["rom_crc"] != 2046:
         raise ValueError("ROM must fit a 2716 with two final CRC bytes")
     image = bytearray(image)
@@ -61,8 +63,9 @@ def build_helper(address):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--version", choices=("W2", "W3"), default="W2")
     args = parser.parse_args()
-    image, labels = build_rom()
+    image, labels = build_rom(args.version)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(image)
     report = {
@@ -70,7 +73,9 @@ def main():
         "used": labels["image_end"],
         "sha256": hashlib.sha256(image).hexdigest(),
         "labels": labels,
-        "protocol": "W2",
+        "protocol": args.version,
+        "baud": 1200 if args.version == "W3" else 9600,
+        "sio_clock_multiplier": 16 if args.version == "W3" else 1,
         "capabilities": 31,
         "build_id": image[labels["build_id"] : labels["build_id"] + 8].hex(),
         "crc16": image[-2:].hex(),

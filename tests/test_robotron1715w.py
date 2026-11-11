@@ -21,13 +21,14 @@ from ravi.execution import OutcomeUnknown
 
 
 class Peer:
-    def __init__(self, mode="", rom=None):
+    def __init__(self, mode="", rom=None, baud=9600):
         self.proc = subprocess.Popen(
             [
                 os.environ["RAVI_W_FIXTURE"],
                 str(rom or ROOT / "rom.bin"),
                 os.environ["RAVI_W_CAS"],
                 mode,
+                str(baud),
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -116,6 +117,29 @@ class FirmwareTests(unittest.TestCase):
 
     def tearDown(self):
         self.peer.close()
+
+
+    def test_w3_reproducible_and_headless(self):
+        image, _ = build_rom("W3")
+        self.assertEqual(image, (ROOT / "rom-w3.bin").read_bytes())
+        peer = Peer("no-ram,no-display", ROOT / "rom-w3.bin", 1200)
+        try:
+            monitor = Monitor(peer)
+            self.assertEqual(monitor.identify()["protocol"], "W3")
+            self.assertEqual(monitor.identify()["rom_integrity"], "CRC16 residue zero")
+        finally:
+            self.assertIn('"violations":0', peer.close())
+
+    def test_w3_cooperative_return_keeps_clock(self):
+        peer = Peer("no-display", ROOT / "rom-w3.bin", 1200)
+        try:
+            m = Monitor(peer)
+            m.identify()
+            m.write_memory(0x8000, bytes.fromhex("3e2ac30300"))
+            self.assertEqual(m.execute(0x8000)["accumulator"], 42)
+            self.assertEqual(m.identify()["protocol"], "W3")
+        finally:
+            peer.close()
 
     def test_identity_and_no_ram(self):
         self.assertEqual(self.m.identify()["protocol"], "W2")
