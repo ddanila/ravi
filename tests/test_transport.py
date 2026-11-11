@@ -118,6 +118,17 @@ class StreamContractTests(unittest.TestCase):
         self.serial.write(b"reply")
         self.assertEqual(os.read(self.master, 5), b"reply")
 
+    def test_idle_after_reply_does_not_report_disconnect(self):
+        # Physical Darwin USB serial can report an empty readable tty with
+        # VMIN=0. Require a byte for readiness while retaining bounded reads.
+        attrs = termios.tcgetattr(self.serial.fd)
+        self.assertEqual(attrs[6][termios.VMIN], 1)
+        os.write(self.master, b"reply")
+        self.assertEqual(self.serial.read(4096, 1), b"reply")
+        self.assertEqual(self.serial.read(4096, 0.01), b"")
+        os.write(self.master, b"next")
+        self.assertEqual(self.serial.read(4096, 1), b"next")
+
     def test_serial_short_writes_and_transient_races(self):
         accepted = bytearray()
         attempts = iter([InterruptedError(), BlockingIOError(), 2, 1, 3])

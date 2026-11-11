@@ -159,7 +159,10 @@ class SerialTransport(Transport):
             attrs[3] = 0
             attrs[4] = _BAUDS[baud]
             attrs[5] = _BAUDS[baud]
-            attrs[6][termios.VMIN] = 0
+            # With VMIN=0 a tty may be readable yet return zero bytes while
+            # idle. read_fd reserves that result for disconnects. O_NONBLOCK
+            # and select still provide the caller's deadline with VMIN=1.
+            attrs[6][termios.VMIN] = 1
             attrs[6][termios.VTIME] = 0
             termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
             termios.tcflush(self.fd, termios.TCIOFLUSH)
