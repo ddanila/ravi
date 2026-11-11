@@ -4,7 +4,29 @@ W2 is the current 2 KiB diagnostic ROM for the 2716 boot socket, not the stock S
 ROM and not the plain-PC1715 boot protocol. It starts its serial monitor without
 floppies, OS, keyboard, or a working main-RAM stack. Source and binaries are in
 `src/ravi/backends/robotron1715w/`. The original W1 ROM is preserved under `baseline/` and remains supported by the host.
-No PC001 hardware qualification is claimed.
+PC001 hardware bring-up began on 2026-11-11; see the hardware note below.
+
+## PC001 hardware note (2026-11-11)
+
+The archived W2 image identifies correctly on PC001 with both the video board
+and floppy drives absent. Startup and commanded ROM CRC checks pass. Its
+9600-baud **x1 receive clock is unsuitable for an independently clocked RS-232
+peer**: Zilog requires external bit synchronization in x1 asynchronous mode
+([SIO technical manual](https://www.hartetechnologies.com/manuals/Zilog/Zilog%20Z80-SIO%20Technical%20Manual.pdf)).
+Physical tests produced intermittent UART and CRC errors; byte pacing did not
+eliminate them. Earlier byte-level emulator qualification did not cover this
+electrical sampling requirement.
+
+A fully uploaded/readback-verified 27-byte RAM shim changed CTC channels 1/2 to
+timer /16, constant 13, and SIO B WR4 to 44h (x16, 8N1). At the reference clock
+this gives 1200 baud. Identification, ROM CRC and a 4 KiB base-RAM survey then
+passed. This is a temporary diagnostic setting, not a newly released ROM;
+reset and the normal W2 return vector restore 9600/x1. A corrected permanent
+ROM and the serial-only CP/M W/M port still require implementation and testing.
+
+The host's idle-read handling was also corrected: VMIN=1 with nonblocking I/O
+avoids treating a zero-byte idle read as a disconnect on macOS USB serial.
+These observations do not certify all RAM or measure PSU rail regulation.
 
 ## Build and host setup
 
