@@ -455,7 +455,7 @@ python -m ravi.backends.robotron1715w.build --version W4 \
 
 The sidecar JSON contains the canonical build fingerprint, full SHA-256,
 firmware version, clocks and size. Firmware 4.0.0 uses protocol W4; these are
-separate fields. The current image uses 1434 bytes, leaves 612 padding bytes,
+separate fields. The current image uses 1891 bytes, leaves 155 padding bytes,
 and reserves the final two bytes for the whole-ROM CCITT checksum. The ROM
 has no stack, main-RAM workspace or video-RAM protocol state; NMI must remain
 inactive, as with W2/W3. The arithmetic CCITT update takes 152 clocks (157
@@ -506,7 +506,7 @@ re-identifies. At other rates use `start()` and rediscover afterwards; do not
 expect a return result at the old rate. Uncooperative programs and RESET are
 not promised to restore ROM mapping.
 
-### Headless host and optional numeric display
+### Headless host and optional display
 
 ```sh
 python -m ravi.backends.robotron1715w --port /dev/cu.usbserial-2110 \
@@ -520,10 +520,11 @@ currently use the qualified macOS PL2303HXD endpoint-zero divisor override;
 unsupported adapters can use standard 9600. No root access or driver detachment
 is performed. W2/W3 retain their existing clock/compatibility paths.
 
-The reduced font preserves 0–F and a dot. The display shows `4.0.0`; subsequent
-numeric cells show state (0=scanning, 1=locked, 2=pending), speed index and last
-status. Per-byte display work was removed. Serial startup precedes video work,
-and no video board is required. Host output supplies the explanatory strings.
+The original 43-glyph font is retained. The display shows `4.0.0`, numeric
+state (0=scanning, 1=locked, 2=pending) and speed index, plus readable messages
+such as WAIT HOST, CONNECT FIRST, CRC ERROR and UART ERROR. Status text updates
+once per response; per-byte display work was removed. Serial startup precedes
+video work, and no video board is required.
 
 ### Burning and physical acceptance
 

@@ -8,7 +8,11 @@ import random
 import time
 from pathlib import Path
 
-from ravi.backends.robotron1715w.discovery import configure_rate, identify_at_rate
+from ravi.backends.robotron1715w.discovery import (
+    configure_rate,
+    discover,
+    identify_at_rate,
+)
 from ravi.transport import LoggedTransport, SerialTransport
 
 
@@ -22,7 +26,9 @@ def main():
         parser.error("--seconds must be positive and at most one day")
     args.output.mkdir(parents=True, exist_ok=False)
     report = {
-        "physical_qualification": True,
+        "hardware_executed": True,
+        "physical_qualification": False,
+        "remaining": "20 cold starts, RESET and CP/M tests after transfer soak",
         "complete": False,
         "scratch_address": 0x8000,
         "scratch_bytes": 4096,
@@ -39,6 +45,12 @@ def main():
             (args.output / "tx.bin").open("wb") as tx,
         ):
             wire = LoggedTransport(port, rx, tx)
+            initial, attempts = discover(port, wire, args.port, timeout=5)
+            report["initial_discovery"] = attempts
+            report["initial_identity"] = initial.identity
+            if initial.identity["protocol"] != "W4":
+                raise ValueError("Expected W4; no scratch writes performed")
+            initial.release()
             for rate in (9600, 41600, 62400):
                 config = configure_rate(port, args.port, rate)
                 monitor = identify_at_rate(wire, 5)

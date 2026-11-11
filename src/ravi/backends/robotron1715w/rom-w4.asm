@@ -82,7 +82,7 @@ checksum_boot_send:
  jp response
 
 display_init:
- ; Optional numeric display: firmware 4.0.0, state, last status.
+ ; Optional display: firmware 4.0.0, numeric state/rate, readable status.
  xor a
  ld hl,02000h
  ld de,02001h
@@ -91,7 +91,7 @@ display_init:
  ldir
  ld hl,font
  ld de,02000h
- ld b,18
+ ld b,43
 font_char:
  ld c,8
 font_row:
@@ -550,9 +550,20 @@ response:
  cp 080h
  jr z,response_wire
  ld a,i
- ; Numeric status update is once per response, never per data byte.
- inc a
- ld (03014h),a
+ ; Status text is copied once per response, never per data byte.
+ exx
+ add a,a
+ add a,a
+ add a,a
+ add a,a
+ ld e,a
+ ld d,0
+ ld hl,status_text
+ add hl,de
+ ld de,03050h
+ ld bc,16
+ ldir
+ exx
 response_wire:
  exx
  ld bc,0ffffh
@@ -768,11 +779,27 @@ crc_byte:
  exx
  jp (ix)
 
-title: db 5,17,1,17,1
+title: db 5,42,1,42,1
 divisors: db 2,3,13
 ; descriptor schema 1, firmware 4.0.0, machine 1=W/M, protocol4,
 ; capability mask, speed mask, framing=8N1, multiplier16, block64, reserved.
 descriptor: db 1,4,0,0,1,4,127,7,0,16,64,0
+status_text:
+ db 28,15,11,14,35,0,0,0,0,0,0,0,0,0,0,0
+ db 28,31,24,0,0,0,0,0,0,0,0,0,0,0,0,0
+ db 28,15,30,31,28,24,0,0,0,0,0,0,0,0,0,0
+ db 13,28,13,0,15,28,28,25,28,0,0,0,0,0,0,0
+ db 28,11,24,17,15,0,15,28,28,25,28,0,0,0,0,0
+ db 28,34,0,30,19,23,15,25,31,30,0,0,0,0,0,0
+ db 31,11,28,30,0,15,28,28,25,28,0,0,0,0,0,0
+ db 28,11,23,0,15,28,28,25,28,0,0,0,0,0,0,0
+ db 12,11,14,0,13,25,23,23,11,24,14,0,0,0,0,0
+ db 28,15,11,14,0,0,0,0,0,0,0,0,0,0,0,0
+ db 12,25,25,30,0,0,0,0,0,0,0,0,0,0,0,0
+ db 28,25,23,0,15,28,28,25,28,0,0,0,0,0,0,0
+ db 28,15,11,14,0,12,22,25,13,21,0,0,0,0,0,0
+ db 33,11,19,30,0,18,25,29,30,0,0,0,0,0,0,0
+ db 13,25,24,24,15,13,30,0,16,19,28,29,30,0,0,0
 font:
  db 0,0,0,0,0,0,0,0
  db 56,76,84,84,100,68,56,0
@@ -791,6 +818,31 @@ font:
  db 120,68,68,68,68,68,120,0
  db 124,64,64,120,64,64,124,0
  db 124,64,64,120,64,64,64,0
+ db 60,64,64,92,68,68,60,0
+ db 68,68,68,124,68,68,68,0
+ db 124,16,16,16,16,16,124,0
+ db 28,8,8,8,72,72,48,0
+ db 68,72,80,96,80,72,68,0
+ db 64,64,64,64,64,64,124,0
+ db 68,108,84,84,68,68,68,0
+ db 68,100,100,84,76,76,68,0
+ db 56,68,68,68,68,68,56,0
+ db 120,68,68,120,64,64,64,0
+ db 56,68,68,68,84,72,52,0
+ db 120,68,68,120,80,72,68,0
+ db 60,64,64,56,4,4,120,0
+ db 124,16,16,16,16,16,16,0
+ db 68,68,68,68,68,68,56,0
+ db 68,68,68,68,68,40,16,0
+ db 68,68,68,84,84,108,68,0
+ db 68,68,40,16,40,68,68,0
+ db 68,68,40,16,16,16,16,0
+ db 124,4,8,16,32,64,124,0
+ db 56,68,4,8,16,0,16,0
+ db 0,0,124,0,124,0,0,0
+ db 0,0,0,124,0,0,0,0
+ db 4,4,8,16,32,64,64,0
+ db 0,16,16,0,16,16,0,0
  db 0,0,0,0,0,24,24,0
 build_id: defs 8,0
 image_end:
