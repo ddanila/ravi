@@ -1,0 +1,19 @@
+{
+  "complete": true,
+  "hardware_executed": false,
+  "firmware_version": "4.1.0",
+  "rom_sha256": "f76f3bc15bddd7a4af2f4da5d66e0153b765d910d204b06f186efc15c68d8736",
+  "tests": 14,
+  "emulator_revision": "e53c19710a3d1a498082fa3fc60f4cfaa63ce52c",
+  "fixture_sha256": "742d654184acc0c5eb45382f5f5dc64d601fd03a38183d7000229c7339e327ec",
+  "cases": [
+    "idle lock expires and reacquires at 9600 and 41600 without reset",
+    "active requests renew idle lease",
+    "all supported rates",
+    "no main RAM and no display",
+    "corruption and UART errors",
+    "stalled transmitter recovery",
+    "cooperative diagnostic return"
+  ],
+  "physical_qualification": "pending"
+}

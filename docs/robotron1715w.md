@@ -442,7 +442,7 @@ readback-verified RAM shim, without reburning the EPROM. W3 starts at that
 rate directly. Emulator qualification does not constitute physical W3
 qualification.
 
-## W4 / firmware 4.0.0 burn candidate
+## W4 / firmware 4.1.0 burn candidate
 
 The new `src/ravi/backends/robotron1715w/rom-w4.bin` is an exact 2048-byte
 2716 image. It is a **burn candidate, not physically qualified firmware**.
@@ -454,8 +454,8 @@ python -m ravi.backends.robotron1715w.build --version W4 \
 ```
 
 The sidecar JSON contains the canonical build fingerprint, full SHA-256,
-firmware version, clocks and size. Firmware 4.0.0 uses protocol W4; these are
-separate fields. The current image uses 1891 bytes, leaves 155 padding bytes,
+firmware version, clocks and size. Firmware 4.1.0 uses protocol W4; these are
+separate fields. The current image uses 1908 bytes, leaves 138 padding bytes,
 and reserves the final two bytes for the whole-ROM CCITT checksum. The ROM
 has no stack, main-RAM workspace or video-RAM protocol state; NMI must remain
 inactive, as with W2/W3. The arithmetic CCITT update takes 152 clocks (157
@@ -467,9 +467,9 @@ a second of idle polling; pending confirmation has twice that budget. Noise
 consumes the idle budget. Malformed or incomplete frames before connection
 cause an error and advance scanning; valid identity queries extend the current
 window so a host can finish identification. Data-receive polling is bounded.
-A confirmed connection stays at its rate indefinitely, including idle periods
-and damaged requests. Only release, cold start, or cooperative program return
-restarts discovery. This is speed discovery, not arbitrary-rate autobaud.
+A confirmed connection retains its rate while commands arrive. Firmware 4.1.0
+returns to scanning after 16 idle intervals; release, cold start and cooperative
+program return also restart discovery. This is speed discovery, not arbitrary-rate autobaud.
 
 ### W4 wire additions
 
@@ -485,7 +485,7 @@ byte. Existing I/V/K, memory and GO framing remain available. Capabilities are
 - `C`: same fields/token; matching pending state locks the speed and returns OK.
   A stale/wrong confirmation fails. Lost acknowledgements are recovered with a
   fresh H/C exchange, never by replaying memory writes or GO.
-- `N`: BLOCK response containing 12 descriptor bytes: schema=1, version 4/0/0,
+- `N`: BLOCK response containing 12 descriptor bytes: schema=1, version 4/1/0,
   machine=1 (W/M), protocol=4, capability mask, speed mask=7, framing=0 (8N1),
   multiplier=16, block maximum=64, reserved=0. Header bank is current speed
   index; address is the descriptor's ROM location.
@@ -520,7 +520,7 @@ currently use the qualified macOS PL2303HXD endpoint-zero divisor override;
 unsupported adapters can use standard 9600. No root access or driver detachment
 is performed. W2/W3 retain their existing clock/compatibility paths.
 
-The original 43-glyph font is retained. The display shows `4.0.0`, numeric
+The original 43-glyph font is retained. The display shows `4.1.0`, numeric
 state (0=scanning, 1=locked, 2=pending) and speed index, plus readable messages
 such as WAIT HOST, CONNECT FIRST, CRC ERROR and UART ERROR. Status text updates
 once per response; per-byte display work was removed. Serial startup precedes
@@ -547,3 +547,26 @@ its evidence, perform 20 power-off/on starts and record successful discovery
 and integrity each time. Test RESET separately; a reset is not a power cycle.
 Finally use the CP/M project's W4 launcher for boot/copy/warm-boot tests at all
 three speeds. No physical qualification claim is made until these pass.
+
+
+## W4 firmware 4.1.0 candidate
+
+Protocol remains W4; this is a compatible firmware update, not a W5 protocol.
+The version descriptor and optional display now report 4.1.0. The 2048-byte
+image retains the font, CRC, build identity and all diagnostic commands.
+
+A confirmed connection now expires after 16 idle polling intervals (roughly
+9.5 seconds at the modeled CPU clock), returning to the existing
+62400/41600/9600 scan. Each command restarts the idle budget. Pending handshake
+tokens retain their existing shorter deadline. The expiry uses registers only,
+so startup and discovery still work without main RAM or a video board.
+This fixes an abandoned session staying locked indefinitely at its old baud.
+A host idle beyond the lease must identify/handshake again before mutation;
+no upload, execution or disk operation is replayed automatically.
+
+Actual-ROM regression tests keep a connection active across several intervals,
+then abandon it and rediscover at 9600 and 41600 without a CPU reset. Existing
+speed, corruption, stalled-transmitter, no-RAM and cooperative-return tests
+remain required. CP/M recovery is tested separately by cpm-plus-1715.
+The new image is an emulator-tested candidate; physical 4.1.0 qualification is
+pending. Existing 4.0.0 hardware evidence does not qualify these changed bytes.

@@ -1,0 +1,19 @@
+test_w4_image (test_robotron1715w4.BuildTests.test_w4_image) ... ok
+test_abandoned_lock_resumes_scanning_without_reset (test_robotron1715w4.FirmwareTests.test_abandoned_lock_resumes_scanning_without_reset) ... ok
+test_adapter_clock_skew_and_failed_write (test_robotron1715w4.FirmwareTests.test_adapter_clock_skew_and_failed_write) ... ok
+test_all_speeds_headless_and_reconnect (test_robotron1715w4.FirmwareTests.test_all_speeds_headless_and_reconnect) ... ok
+test_bad_rom_is_rejected (test_robotron1715w4.FirmwareTests.test_bad_rom_is_rejected) ... ok
+test_continuous_transfers_and_corruption (test_robotron1715w4.FirmwareTests.test_continuous_transfers_and_corruption) ... ok
+test_cooperative_result_at_default_speed (test_robotron1715w4.FirmwareTests.test_cooperative_result_at_default_speed) ... ok
+test_gate_stale_token_and_timeout (test_robotron1715w4.FirmwareTests.test_gate_stale_token_and_timeout) ... ok
+test_host_auto_falls_back_to_standard_rate (test_robotron1715w4.FirmwareTests.test_host_auto_falls_back_to_standard_rate) ... ok
+test_lost_confirmation_ack_reconnects_without_replay (test_robotron1715w4.FirmwareTests.test_lost_confirmation_ack_reconnects_without_replay) ... ok
+test_no_ram_serial_first (test_robotron1715w4.FirmwareTests.test_no_ram_serial_first) ... ok
+test_release_and_speed_selection (test_robotron1715w4.FirmwareTests.test_release_and_speed_selection) ... ok
+test_return_from_diagnostic_restarts_discovery (test_robotron1715w4.FirmwareTests.test_return_from_diagnostic_restarts_discovery) ... ok
+test_uart_noise_and_stalled_transmitter_recover (test_robotron1715w4.FirmwareTests.test_uart_noise_and_stalled_transmitter_recover) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 77.086s
+
+OK

@@ -40,7 +40,7 @@ class FirmwareTests(unittest.TestCase):
         for _ in range(20):
             try:
                 info = m.identify()
-                self.assertEqual(info["firmware_version"], "4.0.0")
+                self.assertEqual(info["firmware_version"], "4.1.0")
                 return m
             except (TimeoutError, MonitorError):
                 if not m.usable:
@@ -58,6 +58,24 @@ class FirmwareTests(unittest.TestCase):
                 self.assertEqual(again.identity["baud"], rate)
                 peer.command("D")
                 # Fixture reports violations at process close; separate test below.
+
+    def test_abandoned_lock_resumes_scanning_without_reset(self):
+        peer = self.peer(62400, "no-ram,no-display")
+        monitor = self.connect(peer)
+        # Active traffic refreshes the lease, even over many idle intervals.
+        for _ in range(5):
+            peer.command("S 12000000")
+            monitor._ok(monitor._begin("I"))
+        # Abandon at one rate and reconnect at another without CPU reset.
+        peer.command("B 9600")
+        peer.command("S 120000000")
+        peer.buffer.clear()
+        recovered = self.connect(peer)
+        self.assertEqual(recovered.identity["baud"], 9600)
+        peer.command("B 41600")
+        peer.command("S 120000000")
+        peer.buffer.clear()
+        self.assertEqual(self.connect(peer).identity["baud"], 41600)
 
     def test_no_ram_serial_first(self):
         peer = Peer("no-ram,no-display", ROOT / "rom-w4.bin", 62400)

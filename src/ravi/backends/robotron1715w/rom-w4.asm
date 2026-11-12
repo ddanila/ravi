@@ -1,4 +1,4 @@
-; MIT. Stackless RAVI W4 ROM, firmware 4.0.0 (legacy R supported). Generated instruction sequences
+; MIT. Stackless RAVI W4 ROM, firmware 4.1.0 (legacy R supported). Generated instruction sequences
 ; are explicit to allow a normal z80asm build without a macro preprocessor.
 ; W4: SP high=state (0 scanning,1 locked,2 pending), low=rate index.
 ; IY=handshake token until locked; I=response status.
@@ -82,7 +82,7 @@ checksum_boot_send:
  jp response
 
 display_init:
- ; Optional display: firmware 4.0.0, numeric state/rate, readable status.
+ ; Optional display: firmware 4.1.0, numeric state/rate, readable status.
  xor a
  ld hl,02000h
  ld de,02001h
@@ -222,6 +222,13 @@ idle:
  ld a,l
  inc a
  ld (03012h),a
+ ; Locked state leases the rate for 16 idle intervals (~9.5 seconds).
+ ; IY holds the token only while pending; no token is needed after confirm.
+ ld a,h
+ cp 1
+ jr nz,idle_budget
+ ld iy,16
+idle_budget:
  ; 32768 polls ~0.5s; pending handshake gets twice the budget.
  ld de,32768
  ld a,h
@@ -238,6 +245,10 @@ idle_poll:
  ld a,h
  cp 1
  jp nz,scan_next
+ dec iy
+ db 0fdh,07dh ; LD A,IYL, countdown is at most 16
+ or a
+ jp z,scan_next
  ld de,32768
 idle_check:
  xor a
@@ -779,11 +790,11 @@ crc_byte:
  exx
  jp (ix)
 
-title: db 5,42,1,42,1
+title: db 5,42,2,42,1
 divisors: db 2,3,13
-; descriptor schema 1, firmware 4.0.0, machine 1=W/M, protocol4,
+; descriptor schema 1, firmware 4.1.0, machine 1=W/M, protocol4,
 ; capability mask, speed mask, framing=8N1, multiplier16, block64, reserved.
-descriptor: db 1,4,0,0,1,4,127,7,0,16,64,0
+descriptor: db 1,4,1,0,1,4,127,7,0,16,64,0
 status_text:
  db 28,15,11,14,35,0,0,0,0,0,0,0,0,0,0,0
  db 28,31,24,0,0,0,0,0,0,0,0,0,0,0,0,0

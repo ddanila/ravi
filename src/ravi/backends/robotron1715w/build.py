@@ -92,7 +92,7 @@ def main():
     }
     if args.version == "W4":
         report.update(
-            firmware_version="4.0.0",
+            firmware_version="4.1.0",
             supported_bauds=[62400, 41600, 9600],
             clock_mode="counter",
             physical_qualification="not yet burned or tested",
