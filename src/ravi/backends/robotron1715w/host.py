@@ -37,6 +37,7 @@ class Monitor:
         self.usable = True
         self.attached = False
         self.identity = None
+        self.rediscover = False
         self.events = []
         self.reserved = []
 
@@ -204,7 +205,17 @@ class Monitor:
 
     def _ensure_identity(self):
         if self.identity is None:
-            self.identify()
+            if self.rediscover:
+                from .discovery import identify_at_rate
+
+                timeout = self.timeout
+                try:
+                    identify_at_rate(self.transport, max(3.0, timeout), monitor=self)
+                    self.rediscover = False
+                finally:
+                    self.timeout = timeout
+            else:
+                self.identify()
 
     def _range(self, address, length, writing=False):
         if (
@@ -312,6 +323,7 @@ class Monitor:
             if self.identity.get("protocol") == "W4":
                 # RETURN is confirmed. The ROM now scans; next operation reconnects.
                 self.identity = None
+                self.rediscover = True
                 self.attached = False
             return {"transaction": r.transaction, "accumulator": r.value}
         except MonitorError:

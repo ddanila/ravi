@@ -4,6 +4,7 @@ import json
 import os
 import random
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from test_robotron1715w import Peer
@@ -151,7 +152,21 @@ class FirmwareTests(unittest.TestCase):
         m = self.connect(peer)
         m.write_memory(0x8000, bytes.fromhex("3e2ac30300"))
         self.assertEqual(m.execute(0x8000)["accumulator"], 42)
-        self.assertEqual(self.connect(peer).identity["baud"], 62400)
+        identify = m.identify
+        # A lost identity request after RETURN must not replay the diagnostic.
+        attempts = []
+
+        def delayed_identity():
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise TimeoutError("discovery window missed")
+            return identify()
+
+        with patch.object(m, "identify", side_effect=delayed_identity):
+            self.assertEqual(m.read_memory(0x8000, 5), bytes.fromhex("3e2ac30300"))
+        self.assertGreaterEqual(len(attempts), 2)
+        self.assertEqual(m.identity["baud"], 62400)
+        self.assertFalse(m.rediscover)
 
     def test_lost_confirmation_ack_reconnects_without_replay(self):
         peer = self.peer()

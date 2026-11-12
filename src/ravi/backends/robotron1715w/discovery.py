@@ -35,10 +35,11 @@ def configure_rate(port, path, baud):
     return dict(requested=baud, calculated_actual=baud)
 
 
-def identify_at_rate(wire, timeout=3.0):
+def identify_at_rate(wire, timeout=3.0, *, monitor=None):
     """Allow a full discovery cycle; only identity/handshake operations repeat."""
     deadline = time.monotonic() + timeout
-    monitor = Monitor(wire, min(timeout, 0.35))
+    monitor = monitor if monitor is not None else Monitor(wire, timeout)
+    monitor.timeout = min(timeout, 0.35)
     last = None
     while time.monotonic() < deadline:
         try:
