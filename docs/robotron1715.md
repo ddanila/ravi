@@ -1,10 +1,12 @@
 # Plain PC1715 stock-ROM bootstrap / MB001 bench procedure
 
-Status, 2026-11-01: **MB001 stock-ROM handshake and serial-loaded code execution
-verified on hardware** with a Prolific PL2303. The original smoke payload took
-its RAM-failure path for `8000h..80FFh`; this does not identify a failed RAM chip.
-The recoverable monitor below is emulator-tested and ready for its first board
-run. This target is the plain 64 KB PC1715, not the 1715M/S550 profile in DAC.
+Status, 2026-11-18: **MB001 stock-ROM handshake, serial-loaded code execution,
+recoverable monitor and RAM tests were verified on hardware** with a Prolific
+PL2303 on 2026-11-01. The original smoke payload took its RAM-failure path for
+`8000h..80FFh`; later monitor campaigns mapped upper-bank faults without proving
+failed silicon. The [inventory record](https://github.com/ddanila/vintage-computer-inventory/blob/main/items/MB001-robotron-pc1715/README.md)
+holds results and evidence. This target is the plain 64 KB PC1715, not the
+1715M/S550 profile in DAC.
 
 ## Cable and serial setup
 
@@ -59,8 +61,8 @@ python3 -m ravi.backends.robotron1715 --port /dev/ttyUSB0 \
 
 Use a fresh log directory for each run. It contains exact `tx.bin`, `rx.bin`
 and `result.json`, including serial settings and what was actually verified.
-On macOS use the adapter's `/dev/cu.*` device. No physical port has been opened
-during preparation.
+On macOS use the adapter's `/dev/cu.*` device. Confirm its physical cable goes
+to the intended board before sending commands.
 
 Defaults: 30-second handshake deadline and 2 ms additional delay after each
 uploaded byte. `--timeout`, `--byte-delay`, `--baud` and `--stop-bits` precede
@@ -86,8 +88,8 @@ Reference ROM SHA-256:
 
 The ROM copies 0000h..07FFh into RAM, removes the ROM overlay, establishes
 SP=0995h and clears working memory. It attempts four floppy drive numbers,
-then calls `BootV24` at 05D7h, repeating if unsuccessful. Whether an absent
-floppy controller permits this path on MB001 is not yet established.
+then calls `BootV24` at 05D7h, repeating if unsuccessful. MB001 reached this
+serial loader in the recorded 2026-11-01 bench configuration.
 
 | Exchange | Bytes |
 | --- | --- |
@@ -157,10 +159,11 @@ read at 8055h produces the failure banner. Both paths passed on 2026-10-20.
 It does **not** emulate cold boot, floppy detection, CTC baud timing, SIO FIFO
 timing, RS-232 hardware, or the actual board.
 
-Next physical evidence: MB001 reaches `12 12` with its actual attached hardware;
-record adapter/framing settings; run the smoke test and retain its logs. Until
-then this remains experimental. A full resident memory/CALL monitor, custom
-diagnostic ROM and RAM-independent DTR milestones are separate work.
+The MB001 inventory archives the successful `12 12` handshake, failed smoke
+test, readback-verified resident monitor and subsequent RAM campaigns. The
+recoverable monitor below is the appropriate starting point for another basic
+memory test. A custom diagnostic ROM and RAM-independent DTR milestones are
+separate work.
 
 ## Recoverable serial diagnostic
 
