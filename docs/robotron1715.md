@@ -264,3 +264,13 @@ Close releases exclusivity even when restoring disconnected-device settings
 fails. The default remains non-exclusive for existing callers. The Robotron
 CP/M unattended supervisor additionally checks visible existing owners before
 opening the physical device.
+
+
+## Standalone CRT diagnostic ROM
+
+The [three-ROM CRT kit](../firmware/robotron1715-crt/README.md) provides twelve
+80×24 monitor patterns, a ten-second cycle and fixed-pattern builds. It executes
+from a 2716 boot ROM and uses generated standard/alternate glyph ROMs, with no
+keyboard, serial or disk dependency. It probes for a usable screen block and
+separate work page before using a stack. Build instructions, socket mapping,
+emulator qualification and physical-trial limitations are in the kit README.

@@ -1,0 +1,611 @@
+{
+  "manifest": {
+    "source_sha256": {
+      "tools/build_robotron1715_crt.py": "99618191ee1076d3632f82383826820d0f95eb3daed36cb29121bdd43c2518d3",
+      "firmware/robotron1715-crt/boot.asm": "fa1fe074992616dfb3e4d966bfad228d76ac440a48ea94f8093139ae6ac8b797"
+    },
+    "version": "1.0",
+    "pattern": "cycle",
+    "boot_used": 1867,
+    "tile_count": 149,
+    "stream_bytes": [
+      1944,
+      1944,
+      1952,
+      1944,
+      1944,
+      1944,
+      1944,
+      1944,
+      1944,
+      1944,
+      1944,
+      1956
+    ],
+    "compressed_bytes": [
+      194,
+      90,
+      426,
+      52,
+      52,
+      52,
+      52,
+      52,
+      52,
+      60,
+      240,
+      156
+    ],
+    "sockets": {
+      "A25.3": "boot.bin",
+      "A25.2": "glyph-standard.bin",
+      "A25.1": "glyph-alternate.bin"
+    },
+    "files": {
+      "boot.bin": {
+        "bytes": 2048,
+        "sha256": "84998d3390e3ded5e9160bbc2cf17cb4f5f96bb168f44544b761817ceae6b0ff"
+      },
+      "glyph-standard.bin": {
+        "bytes": 2048,
+        "sha256": "60f67cbaad970e788e9472498ff939d058b7e59c0180f56c835d3374e1b5503b"
+      },
+      "glyph-alternate.bin": {
+        "bytes": 2048,
+        "sha256": "7e10d896d0f85b6156ca82b32c63248154255831ba08090d3f8b9ae42903038b"
+      },
+      "glyphs.bin": {
+        "bytes": 4096,
+        "sha256": "40df32cc203a5c01ac8511126259c3752c32742f6723b6b9b829253a7ba521d6"
+      }
+    }
+  },
+  "qualification": "emulator-only",
+  "runs": {
+    "cycle": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 560000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 1,
+          "cycle": 25190000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 2,
+          "cycle": 49788000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 3,
+          "cycle": 74366000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 4,
+          "cycle": 98955000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 5,
+          "cycle": 123543000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 6,
+          "cycle": 148132000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 7,
+          "cycle": 172721000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 8,
+          "cycle": 197309000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 9,
+          "cycle": 221898000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 10,
+          "cycle": 246488000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 11,
+          "cycle": 271077000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 0,
+          "cycle": 295666000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 1,
+          "cycle": 320254000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 2,
+          "cycle": 344851000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 3,
+          "cycle": 369429000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 4,
+          "cycle": 394018000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 5,
+          "cycle": 418607000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 6,
+          "cycle": 443195000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 7,
+          "cycle": 467784000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 8,
+          "cycle": 492372000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 9,
+          "cycle": 516961000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 10,
+          "cycle": 541551000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 11,
+          "cycle": 566141000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 0,
+          "cycle": 590729000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 12399,
+      "fetches": 24072847,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 239,
+      "sp": 63488
+    },
+    "screen": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 1280000,
+          "screen": 61440,
+          "work": 61184
+        }
+      ],
+      "frames": 128,
+      "fetches": 247218,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 238,
+      "sp": 61440
+    },
+    "work": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 641000,
+          "screen": 63488,
+          "work": 62976
+        }
+      ],
+      "frames": 141,
+      "fetches": 273213,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63232
+    },
+    "alias": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 672000,
+          "screen": 63488,
+          "work": 62976
+        }
+      ],
+      "frames": 140,
+      "fetches": 271998,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 243,
+      "sp": 63232
+    },
+    "dead": {
+      "clock_hz": 2458000,
+      "transitions": [],
+      "frames": 0,
+      "fetches": 0,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 128,
+      "sp": 65535
+    },
+    "reset": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 560000,
+          "screen": 63488,
+          "work": 63232
+        },
+        {
+          "pattern": 0,
+          "cycle": 560000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 91,
+      "fetches": 176823,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 243,
+      "sp": 63488
+    },
+    "identity": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 560000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2070916,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 236,
+      "sp": 63488
+    },
+    "grid": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 1,
+          "cycle": 560000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2070927,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 239,
+      "sp": 63488
+    },
+    "circle": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 2,
+          "cycle": 569000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2079042,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 236,
+      "sp": 63488
+    },
+    "vertical": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 3,
+          "cycle": 558000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2071008,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63488
+    },
+    "horizontal": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 4,
+          "cycle": 558000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2071008,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63488
+    },
+    "dots": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 5,
+          "cycle": 558000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2071008,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63488
+    },
+    "checker": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 6,
+          "cycle": 558000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2071008,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63488
+    },
+    "black": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 7,
+          "cycle": 558000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2071008,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63488
+    },
+    "white": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 8,
+          "cycle": 558000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2071008,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 247,
+      "sp": 63488
+    },
+    "window": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 9,
+          "cycle": 559000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2070982,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 237,
+      "sp": 63488
+    },
+    "glyphs": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 10,
+          "cycle": 560000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2070927,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 238,
+      "sp": 63488
+    },
+    "intensity": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 11,
+          "cycle": 561000,
+          "screen": 63488,
+          "work": 63232
+        }
+      ],
+      "frames": 1066,
+      "fetches": 2083663,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 241,
+      "sp": 63488
+    }
+  },
+  "dwell_seconds": [
+    10.020341741253052,
+    10.007323026851099,
+    9.999186330349877,
+    10.003661513425548,
+    10.003254678600488,
+    10.003661513425548,
+    10.003661513425548,
+    10.003254678600488,
+    10.003661513425548,
+    10.00406834825061,
+    10.003661513425548,
+    10.003661513425548,
+    10.003254678600488,
+    10.006916192026038,
+    9.999186330349877,
+    10.003661513425548,
+    10.003661513425548,
+    10.003254678600488,
+    10.003661513425548,
+    10.003254678600488,
+    10.003661513425548,
+    10.00406834825061,
+    10.00406834825061,
+    10.003254678600488
+  ],
+  "raster_sha256": {
+    "identity": "44a321c5a38e88d7a912ddb249fb723398a01adefbbc6d390ecb6fc4c934d472",
+    "grid": "007840ca4baf7363c38a6c4de7046e89d56bf85e444c142629bfe185fd9afa7d",
+    "circle": "946b694918c28d92cc1736ee7b1b030b145c5a9ace2229790c78de342a286c5f",
+    "vertical": "7bd6518bf90b9765c6b9704e023836dd862198b73884102a70d5dda3552c50f9",
+    "horizontal": "55f56e990419f033a267dae499c9c131423c2b27f865c7e58f7dd2847723872e",
+    "dots": "310b83e837140fc846173c9d354bd20482e7e16016c7a233ba6ad28b8228de64",
+    "checker": "61d4391f572aeaa8f8a83832d567da639ec4044dc45333da7bf3dee24afd7a24",
+    "black": "d1768af9860251b5b7bc5c43b5368761bba981c92dd8005238016b83940d5bad",
+    "white": "3e47af97fb87ffb8b7f5dbec466a6d982c205b5f603589163263eeb388598062",
+    "window": "692c1b3fe7059b5d30fc3223f8aedbd8af765e185a7e4e97d623ef9b63d7dcbe",
+    "glyphs": "2d0178660fb5e22ec75745ee2a887865d5b160a5336a1ce5a8abe0ad8f23c131",
+    "intensity": "c6119d4279e918ce25695ecdc3d4e0bea0dd51e610e7c1a84a9b476418809381"
+  },
+  "dac_revision": "9d9915fdc32e2d8727a7a10a9bac48db808e6e5b",
+  "dac_dirty": false
+}
