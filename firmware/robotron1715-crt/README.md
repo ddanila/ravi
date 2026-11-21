@@ -6,11 +6,15 @@ There is no keyboard, disk, serial or external-bus dependency. This is not a
 complete motherboard/RAM diagnostic, and cannot show a failure if the CPU or
 video path cannot run.
 
-**Version 1.1: corrected screen-latch port and address wiring; emulator-qualified,
-not yet qualified on physical hardware.**
-The earlier 1.0 boot ROM used incorrect screen selection shared by its emulator.
-Replace/reprogram **A25.3 only**; both glyph ROM images are unchanged. No
-physical machine was accessed or ROM programmed during development.
+**Version 1.2: CPU-timed pattern cycling; emulator-qualified, pending physical
+validation.** Version 1.1 displayed its identity page on hardware but repeatedly
+blinked instead of advancing. It incorrectly polled CRT status through the
+one-way A23.1 data latch, a path the emulator had erroneously provided.
+Version 1.2 removes every CPU input operation and uses a calibrated instruction
+loop. Version 1.1's screen-latch port/address corrections are retained.
+Replace/reprogram **A25.3 only**; both diagnostic glyph ROM images are unchanged.
+Stock glyph ROMs display text/character arrangements, not the intended graphics.
+No physical programmer or machine was accessed while preparing version 1.2.
 
 Ready images: [cycle kit](images/cycle), [fixed circle](images/fixed-circle),
 and [all variants](images). See the [qualification record](qualification/README.md)
@@ -37,7 +41,7 @@ requires the companion DAC video implementation, not the older headless model.
 
 The normal test suite checks compression round trips, stream grammar and FIFO
 limits. DAC's independent hand-written device vectors check register aliases,
-status, glyph addressing and bit order, bank XOR, reverse, intensity, cursor,
+write-only CPU interface, glyph addressing and bit order, bank XOR, reverse, intensity, cursor,
 FIFO overflow, refresh-gated fetches, nominal timing, reset and runtime loading.
 The qualifier's independent whole-frame renderer compares every captured pixel;
 additional stripe, dot and all-black/all-white assertions check simple patterns.
@@ -84,7 +88,7 @@ The cycle and contact-sheet order, left to right then top to bottom, is:
 
 Use any name with `--pattern` to hold it indefinitely; `cycle` is the default.
 Reset restarts RAM selection and the first screen. A fixed build keeps scanout
-running continuously, including across its internal 513-frame timer boundaries.
+running continuously, including across its internal delay boundaries.
 
 The raw circle looks elliptical on square-pixel software viewers. Use the 4:3
 preview, or view the active raster at 4:3 on the CRT. Dithering is spatial
@@ -105,14 +109,19 @@ exhaustive RAM fault or retention test. A bad bank can cause a longer start.
 
 If no suitable pair exists, the ROM repeats a finite search with video disabled;
 it never calls a subroutine or pushes a return address onto untested RAM.
-There is no visible all-RAM-failed message. If frame status stops arriving, a
-bounded polling loop reinitializes the CRT. The screen reports hexadecimal
-addresses; typical clean RAM selection is F800h with work page F700h.
+There is no visible all-RAM-failed message.
+
+The cycle does not poll CRT status: the board has no CPU readback path through
+A23.1. A 24,579,698-T-state instruction loop takes 9.999877 seconds at the
+nominal 2.458 MHz CPU clock; pattern decompression adds a small transition
+overhead. This keeps refresh-driven video fetching active and does not require
+interrupts or a CTC. There is no frame-status recovery/reinitialization loop.
+The screen reports hexadecimal addresses; typical clean RAM selection is F800h with work page F700h.
 
 The 8275 configuration is 80 columns, 24 visible plus 2 blank rows, 12 scanlines
 per row and 28 horizontal blank character clocks. With the 13.824 MHz dot clock
-this gives 16 kHz horizontal and about 51.282 Hz frame rate. A dwell is 513 frame
-status events (about ten seconds), plus a short blanked decompression interval.
+this gives 16 kHz horizontal and about 51.282 Hz frame rate. Dwell timing uses the CPU clock,
+independently of that frame rate, plus a short blanked decompression interval.
 STOP blanks the display without stopping sync. There are at most 16 invisible
 attributes per row; the builder/reference checks the FIFO and 2048-byte stream
 limits. Pattern data uses a small LZ decoder and overlapping backward copies.

@@ -105,6 +105,7 @@ def run(runner, kit, out, seconds, fault="clean"):
     assert data["rom_enabled"] == 1
     for key in ("underruns", "overflows", "unexpected_io", "unclaimed_reads"):
         assert data[key] == 0, (fault, key, data[key])
+    assert data["io_reads"] == 0, (fault, "unexpected CPU input", data)
     return data
 
 
@@ -176,9 +177,54 @@ def qualify(dac, out):
         assert ppm(folder / "frame-00.ppm") != expected(glyphs, streams, 0), name
         assert data["unexpected_io"] == (1 if name == "floppy-port" else 0)
         report["rejected_mutations"][name] = data
+    # A23.1 prevents status reads. Reintroduce the 1.1 polling loop and
+    # hold the otherwise floating CPU input low: first screen must get stuck.
+    # This is the hardware symptom, not an assumption about open-bus voltage.
+    old_wait = """ ld bc,513
+frames:
+ ld de,0
+wait_frame:
+ in a,(019h)
+ and 020h
+ jr nz,frame_seen
+ dec de
+ ld a,d
+ or e
+ jr nz,wait_frame
+ jp initialise
+frame_seen:
+ dec bc
+ ld a,b
+ or c
+ jr nz,frames
+"""
+    begin = source.index("delay:\n")
+    end = source.index(" ld a,(iy+0)", begin)
+    folder = out / "status-polling-regression"
+    folder.mkdir(exist_ok=True)
+    (folder / "boot.asm").write_text(source[:begin] + old_wait + source[end:])
+    binary = folder / "boot.bin"
+    subprocess.run(["z80asm", "-o", str(binary), str(folder / "boot.asm")], check=True)
+    raw = binary.read_bytes()
+    assert len(raw) <= 2048
+    binary.write_bytes(raw + b"\xff" * (2048 - len(raw)))
+    result = subprocess.run(
+        [str(runner), str(binary), str(kit / "glyphs.bin"), str(folder), "6", "status-low"],
+        check=True, text=True, capture_output=True,
+    )
+    broken = json.loads(result.stdout)
+    assert [t["pattern"] for t in broken["transitions"]] == [0]
+    assert broken["display_starts"] >= 4 and broken["status_reads"] > 100000
+    report["rejected_mutations"]["status-polling"] = broken
+    # New firmware advances at the same speed even with low floating inputs.
+    low = run(runner, kit, out / "status-low", 22, "status-low")
+    assert [t["pattern"] for t in low["transitions"]] == [0, 1, 2]
+    assert low["display_starts"] == 3 and low["status_reads"] == 0
+    report["runs"]["status-low"] = low
     cycle = run(runner, kit, out / "cycle-run", 242)
     transitions = cycle["transitions"]
     assert [t["pattern"] for t in transitions] == list(range(12)) * 2 + [0]
+    assert cycle["display_starts"] == len(transitions)
     dwell = [
         (b["cycle"] - a["cycle"]) / cycle["clock_hz"]
         for a, b in zip(transitions, transitions[1:])
@@ -237,7 +283,8 @@ def qualify(dac, out):
         build(fixed, name)
         result = run(runner, fixed, fixed / "run", 21)
         assert (
-            len(result["transitions"]) == 1
+            result["display_starts"] == 1
+            and len(result["transitions"]) == 1
             and result["transitions"][0]["pattern"] == index
         )
         for frame in (0, 110, 120):

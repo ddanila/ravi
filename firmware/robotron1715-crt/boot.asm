@@ -1,4 +1,4 @@
-; RAVI PC1715 CRT 1.1. Z80, 2716 boot ROM, overlay remains enabled.
+; RAVI PC1715 CRT 1.2. Z80, 2716 boot ROM, overlay remains enabled.
 ; Destructive minimum-RAM search. No CALL/PUSH/interrupts until a work page
 ; and a distinct non-aliasing screen block have both passed two fill/read passes.
  org 0
@@ -158,25 +158,20 @@ show:
  call z,addresses
  ld a,023h
  out (019h),a
- ; 513 frame interrupts = 10.0035 seconds at 51.282 Hz.
- ; Each wait is bounded. A missing CRT status restarts initialisation.
- ld bc,513
-frames:
- ld de,0
-wait_frame:
- in a,(019h)
- and 020h
- jr nz,frame_seen
- dec de
- ld a,d
- or e
- jr nz,wait_frame
- jp initialise
-frame_seen:
+ ; A23.1 is a one-way latch: CPU cannot read 8275 status on this board.
+ ; 24,579,698 T states = 9.999877 s at nominal 2.458 MHz.
+ ; Execute instructions continuously to preserve refresh-driven video fetches.
+delay:
+ ld d,16
+delay_outer:
+ ld bc,59085
+delay_inner:
  dec bc
  ld a,b
  or c
- jr nz,frames
+ jr nz,delay_inner
+ dec d
+ jr nz,delay_outer
  ld a,(iy+0)
  @ADVANCE@
 selected:
