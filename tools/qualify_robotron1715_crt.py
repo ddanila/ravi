@@ -148,6 +148,34 @@ def qualify(dac, out):
     manifest = build(kit)
     glyphs, streams, _ = assets()
     report = {"manifest": manifest, "qualification": "emulator-only", "runs": {}}
+    # Negative controls reproduce each hardware-assumption error separately.
+    # Assemble real changed firmware, not a renderer that recognizes patterns.
+    source = (kit / "boot.asm").read_text()
+    mutations = {
+        "floppy-port": source.replace("out (034h),a", "out (022h),a"),
+        "wrong-address-bits": source.replace(
+            "rrca\n rrca\n and 03eh", "rrca\n rrca\n rrca\n and 31"
+        ),
+    }
+    report["rejected_mutations"] = {}
+    for name, asm in mutations.items():
+        assert asm != source
+        folder = out / name
+        folder.mkdir(exist_ok=True)
+        (folder / "boot.asm").write_text(asm)
+        binary = folder / "boot.bin"
+        subprocess.run(["z80asm", "-o", str(binary), str(folder / "boot.asm")], check=True)
+        raw = binary.read_bytes()
+        assert len(raw) <= 2048
+        binary.write_bytes(raw + b"\xff" * (2048 - len(raw)))
+        result = subprocess.run(
+            [str(runner), str(binary), str(kit / "glyphs.bin"), str(folder), "3", "clean"],
+            check=True, text=True, capture_output=True,
+        )
+        data = json.loads(result.stdout)
+        assert ppm(folder / "frame-00.ppm") != expected(glyphs, streams, 0), name
+        assert data["unexpected_io"] == (1 if name == "floppy-port" else 0)
+        report["rejected_mutations"][name] = data
     cycle = run(runner, kit, out / "cycle-run", 242)
     transitions = cycle["transitions"]
     assert [t["pattern"] for t in transitions] == list(range(12)) * 2 + [0]

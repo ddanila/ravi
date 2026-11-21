@@ -167,7 +167,7 @@ def assets():
 
     ident = blank(32)
     for y, s in (
-        (3, "RAVI PC1715 CRT 1.0"),
+        (3, "RAVI PC1715 CRT 1.1"),
         (6, "80 X 24  -  640 X 288"),
         (9, "RAM SCREEN: 0000  WORK: 0000"),
         (12, "12 PATTERNS  -  10 SECONDS"),
@@ -289,7 +289,7 @@ def build(output, pattern="cycle"):
                 ROOT / "firmware/robotron1715-crt/boot.asm",
             )
         },
-        "version": "1.0",
+        "version": "1.1",
         "pattern": pattern,
         "boot_used": len(raw),
         "tile_count": tiles,

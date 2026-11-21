@@ -6,7 +6,10 @@ There is no keyboard, disk, serial or external-bus dependency. This is not a
 complete motherboard/RAM diagnostic, and cannot show a failure if the CPU or
 video path cannot run.
 
-**Status: emulator-qualified; not yet qualified on physical hardware.** No
+**Version 1.1: corrected screen-latch port and address wiring; emulator-qualified,
+not yet qualified on physical hardware.**
+The earlier 1.0 boot ROM used incorrect screen selection shared by its emulator.
+Replace/reprogram **A25.3 only**; both glyph ROM images are unchanged. No
 physical machine was accessed or ROM programmed during development.
 
 Ready images: [cycle kit](images/cycle), [fixed circle](images/fixed-circle),
@@ -116,7 +119,8 @@ limits. Pattern data uses a small LZ decoder and overlapping backward copies.
 
 The schematic's A25.2 is bank zero and A25.1 bank one. Glyph address is
 `line * 128 + code`; serial pixels are D7 first. Attribute GPA0 XOR latch DB6
-selects the bank. The latch's five low bits select the 2 KiB main-RAM block.
+selects the bank. The latch at ports 34h–37h uses D1–D5 to select the 2 KiB main-RAM block;
+D0 is bypassed by X12 in 80-column mode. Ports 20h–23h control the floppy.
 Custom circle/grid tiles occupy bank one and spare low codes in bank zero.
 
 The emulator models digital behavior and refresh-slot fetch availability. It

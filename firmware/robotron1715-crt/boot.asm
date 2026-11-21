@@ -1,4 +1,4 @@
-; RAVI PC1715 CRT 1.0. Z80, 2716 boot ROM, overlay remains enabled.
+; RAVI PC1715 CRT 1.1. Z80, 2716 boot ROM, overlay remains enabled.
 ; Destructive minimum-RAM search. No CALL/PUSH/interrupts until a work page
 ; and a distinct non-aliasing screen block have both passed two fill/read passes.
  org 0
@@ -132,11 +132,11 @@ init_loop:
  out (018h),a
  out (018h),a
  db 0ddh,07ch ; LD A,IXH
+ ; A23.2 D1..D5 -> AB11..AB15 (X12 selects counter AB10).
  rrca
  rrca
- rrca
- and 31
- out (022h),a
+ and 03eh
+ out (034h),a
 show:
  ld a,040h
  out (019h),a

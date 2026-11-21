@@ -1,11 +1,11 @@
 {
   "source_sha256": {
-    "tools/build_robotron1715_crt.py": "99618191ee1076d3632f82383826820d0f95eb3daed36cb29121bdd43c2518d3",
-    "firmware/robotron1715-crt/boot.asm": "fa1fe074992616dfb3e4d966bfad228d76ac440a48ea94f8093139ae6ac8b797"
+    "tools/build_robotron1715_crt.py": "e20e441cda7c3b3eb42b289ba773a883dcaef70fc95d604a659591294a8ede6a",
+    "firmware/robotron1715-crt/boot.asm": "b6def3dbb8f63c514fb332116103b027c12c1ea56129aece95c2d433f66e14e6"
   },
-  "version": "1.0",
+  "version": "1.1",
   "pattern": "intensity",
-  "boot_used": 1867,
+  "boot_used": 1866,
   "tile_count": 149,
   "stream_bytes": [
     1944,
@@ -43,7 +43,7 @@
   "files": {
     "boot.bin": {
       "bytes": 2048,
-      "sha256": "1583059f7339701aa6071c6a0f88a63d2a19c33635218631fc5a09ce5a511748"
+      "sha256": "de82a6d39cbe9864b7f95cd3e011442471608048df2c4cdc6cbe88728175943a"
     },
     "glyph-standard.bin": {
       "bytes": 2048,
