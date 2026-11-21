@@ -1,4 +1,4 @@
-; RAVI PC1715 CRT 1.2. Z80, 2716 boot ROM, overlay remains enabled.
+; RAVI PC1715 CRT 1.3. Z80, 2716 boot ROM, overlay remains enabled.
 ; Destructive minimum-RAM search. No CALL/PUSH/interrupts until a work page
 ; and a distinct non-aliasing screen block have both passed two fill/read passes.
  org 0
@@ -138,8 +138,50 @@ init_loop:
  and 03eh
  out (034h),a
 show:
- ld a,040h
- out (019h),a
+ ld (iy+1),0 ; title phase; work-page byte is observed only by test runner
+ push ix
+ pop hl
+ ld (hl),080h ; standard glyph bank, invisible field attribute
+ inc hl
+ ld (hl),32
+ push hl
+ pop de
+ inc de
+ ld bc,1919
+ ldir
+ ld hl,names
+ ld b,(iy+0)
+ inc b
+name_next:
+ ld e,(hl)
+ inc hl
+ dec b
+ jr z,name_found
+ ld d,0
+ add hl,de
+ jr name_next
+name_found:
+ ld c,e
+ push hl
+ ld a,80
+ sub c
+ srl a
+ ld e,a
+ ld d,0
+ push ix
+ pop hl
+ add hl,de
+ ld de,881 ; row 11, plus initial field attribute
+ add hl,de
+ ex de,hl
+ pop hl
+ ld b,0
+ ldir
+ call start
+ ld d,2
+ call delay
+ call stop
+ ld (iy+1),1 ; clean pattern phase
  ld a,(iy+0)
  add a,a
  ld l,a
@@ -156,27 +198,38 @@ show:
  ld a,(iy+0)
  or a
  call z,addresses
+ call start
+hold:
+ ld d,20
+ call delay
+ ld a,(iy+0)
+ @ADVANCE@
+selected:
+ push af
+ call stop
+ pop af
+ ld (iy+0),a
+ jp show
+stop:
+ ld a,040h
+ out (019h),a
+ ret
+start:
  ld a,023h
  out (019h),a
- ; A23.1 is a one-way latch: CPU cannot read 8275 status on this board.
- ; 24,579,698 T states = 9.999877 s at nominal 2.458 MHz.
- ; Execute instructions continuously to preserve refresh-driven video fetches.
+ ret
+; No CRT status reads. Two iterations ~1 s; twenty ~10 s at 2.458 MHz.
+; Instruction execution preserves refresh-driven display fetching.
 delay:
- ld d,16
-delay_outer:
- ld bc,59085
+ ld bc,47268
 delay_inner:
  dec bc
  ld a,b
  or c
  jr nz,delay_inner
  dec d
- jr nz,delay_outer
- ld a,(iy+0)
- @ADVANCE@
-selected:
- ld (iy+0),a
- jp show
+ jr nz,delay
+ ret
 ; LZ decoder: zero=end, low control=literal count;
 ; high control=match length minus three, then little-endian backward distance.
 unpack:
@@ -244,4 +297,4 @@ digit_store:
  ret
 ; 80 columns, 24+2 rows, 12 scanlines, invisible attributes, 28 H blank.
 parameters:
- db 79,057h,0bbh,00dh
+ db 79,057h,06bh,00dh

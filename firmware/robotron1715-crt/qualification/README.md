@@ -1,48 +1,49 @@
-# Qualification record — 2026-11-21
+# CRT 1.3 qualification — 2026-11-21
 
-The **1.2** kit passed emulator qualification against clean DAC revision
-`e078e8709ce4be98bfd9e6d1c941e3b353b127c9`. See [machine-readable evidence](qualification.json),
-[contact sheet](contact-sheet.png), and the [ready ROMs](../images).
+Passed against clean DAC revision `97a82a98f2c17e7328337dc2ae6a96bcfa16835a`.
+See [full results](qualification.json), [pattern gallery](contact-sheet.png),
+[title-card example](title-example.png) and [ready images](../images).
 
-## Physical report and reproduced defect
+## Defect and correction
 
-The user's photo `PXL_20261121_103202676.MP.jpg` shows CRT 1.1's identity
-screen with RAM F800h/work F700h. They report blinking about every 1.5 seconds
-and no progression after two minutes. Version 1.1 incorrectly read CRT status
-through the one-way A23.1 DS8282 latch shown on
-[ZRE schematic sheet 2](https://www.sax.de/~zander/pc1715/pc_zres.pdf).
-The emulator had incorrectly supplied readable 8275 status.
+The [1.2 hardware observations](hardware-observations-1.2.json) show gaps
+repeated at character-row boundaries. The 8275's underline position above 7
+blanks the first and last physical scanline; firmware incorrectly used BBh
+(underline 11), and the emulator omitted this effect. Version 1.3 uses 6Bh
+(underline 6), preserving twelve scanlines and all glyph data.
 
-The regression reassembles the old polling loop into real firmware and injects
-zero for unclaimed CRT input reads: it remains on pattern zero, with five
-display starts and 274603 status reads in six seconds. This is a missing-flag
-fault injection, not a claim that all physical floating buses read zero.
-A separate run of the original 1.1 binary measured restarts every 1.378425
-seconds, matching the reported symptom. The default emulated open bus is FFh.
+The [Intel datasheet](https://bitsavers.org/components/intel/8275/1984_8275.pdf),
+Underline Placement, establishes the threshold. ZRE sheet 2 A16.3/A16.2
+establishes that LTEN overrides VSP/reverse processing. Device tests cover
+positions 7/8 and 6/11, both line-counter modes, cursor and field underline.
 
-Version 1.2 uses a calibrated CPU delay and executes no input instructions.
-Under the same missing-flag condition, it advances through patterns 0, 1 and 2
-in 22 seconds, with exactly three display starts and zero input reads.
+## Executed checks
 
-## Completed checks
+- Two complete cycles plus the next title/pattern: 50 captures, all pixel-exact.
+- Titles: **1.0175–1.0220 s**. Clean patterns:
+  **10.0163–10.0171 s**.
+- Each of twelve fixed builds displays its title once, then holds its pattern;
+  exact captures after title removal, at 10 s and at 20 s.
+- BBh negative variants reproduce boundary-line losses exactly in grid, circle,
+  white and window images. The clean reference loses none of those pixels.
+- Previous wrong-port, wrong-address and missing-status negative controls pass.
+- Reset during title and pattern restarts correctly; screen/work RAM faults,
+  aliases and all-RAM failure behave as specified.
+- Positive runs have no CPU input operations, underruns, FIFO overflows or
+  unexpected/unclaimed I/O. Two display starts per title/pattern pair.
+- Full DAC test suite passes. RAVI: 106 tests, 47 skips; targeted lint passes.
+- Both ordinary CP/M platform builds pass their actual-raster regression on
+  the corrected model: [results](cpm-display-regression.json).
 
-- Two complete cycles; 24 measured dwell intervals: **9.9996–10.0374 seconds**.
-- All 25 cycle captures match the independent whole-frame renderer exactly.
-- All twelve fixed builds match at initial capture, 10 seconds and 20 seconds;
-  each starts the display exactly once, without periodic blanking/restarts.
-- Zero input instructions in every positive run. Zero underruns, FIFO
-  overflows, unexpected external writes or unclaimed reads.
-- Wrong screen-port and address-bit mutations still fail raster comparison.
-- Screen/work RAM failures, aliasing, all-RAM failure and native reset pass.
-- DAC full test suite passes. RAVI: 106 tests, 47 skips; targeted lint passes.
+## Deliverable
 
-This supersedes 1.1 qualification, which omitted the real board's one-way
-CRT bus. Version 1.0 additionally had incorrect latch port/address selection.
+Cycle A25.3 SHA-256:
+`fd4afbddec93baf878ac7111149cf16168b69d0628643a46f81bc97929a07abd`.
+The boot uses 2034 bytes, padded to 2048. Suggested label:
+**A25.3 vidtest 1.3**. Both diagnostic glyph images are byte-identical to 1.0–1.2.
 
-Reproduce with `python3 tools/qualify_robotron1715_crt.py --dac ../dac-emulation`.
-The JSON records DAC revision, image hashes, read/start counters and all three
-negative controls. Raw rasters are 640×288; 4:3 previews are 640×480.
+Version 1.3 has not been flashed or tested on physical hardware in this task.
+This record supersedes 1.2's raster qualification; 1.2 did fix its predecessor's
+status-polling stall, but its emulator did not model boundary-line suppression.
 
-Only **A25.3 boot.bin** changes; both diagnostic glyph ROMs are byte-identical
-to 1.0/1.1. Label the new chip **A25.3 vidtest 1.2**. Version 1.2 has not been
-flashed or tested on hardware during this fix; physical validation is pending.
+Reproduce: `python3 tools/qualify_robotron1715_crt.py --dac ../dac-emulation`.

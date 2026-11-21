@@ -6,15 +6,23 @@ There is no keyboard, disk, serial or external-bus dependency. This is not a
 complete motherboard/RAM diagnostic, and cannot show a failure if the CPU or
 video path cannot run.
 
-**Version 1.2: CPU-timed pattern cycling; emulator-qualified, pending physical
-validation.** Version 1.1 displayed its identity page on hardware but repeatedly
-blinked instead of advancing. It incorrectly polled CRT status through the
-one-way A23.1 data latch, a path the emulator had erroneously provided.
-Version 1.2 removes every CPU input operation and uses a calibrated instruction
-loop. Version 1.1's screen-latch port/address corrections are retained.
-Replace/reprogram **A25.3 only**; both diagnostic glyph ROM images are unchanged.
-Stock glyph ROMs display text/character arrangements, not the intended graphics.
-No physical programmer or machine was accessed while preparing version 1.2.
+**Version 1.3: complete scanlines and one-second pattern title cards.**
+The 1.2 hardware photos exposed another missing emulator behavior: underline
+positions greater than seven cause the 8275 to suppress the first and last
+scanline of each character row. The previous BBh setting selected underline 11;
+1.3 uses 6Bh (underline 6, still twelve scanlines), restoring continuous graphics.
+DAC now models that suppression and the board's LTEN-over-VSP wiring.
+
+Each pattern has a centered uppercase title on black for approximately one
+second, followed by ten seconds of the clean pattern. Fixed builds show their
+title once and hold the pattern. Existing text inside identity/glyph/intensity
+patterns remains. Reset restarts the title sequence after RAM selection.
+
+Replace/reprogram **A25.3 only**; both diagnostic glyph images are unchanged.
+The cycle boot uses 2034 bytes of its 2048-byte EPROM. Title rendering shares
+code and existing glyphs; it does not require additional hardware or RAM blocks.
+Stock glyph ROMs display character arrangements rather than intended graphics.
+Version 1.3 is emulator-qualified; physical validation remains pending.
 
 Ready images: [cycle kit](images/cycle), [fixed circle](images/fixed-circle),
 and [all variants](images). See the [qualification record](qualification/README.md)
@@ -32,7 +40,7 @@ python3 tools/qualify_robotron1715_crt.py --dac ../dac-emulation
 
 The first command creates `build/robotron1715-crt`. The qualifier builds and
 executes the actual ROM on DAC's plain-PC1715 CPU/display model, checks two full
-cycles, checks every fixed build at 10 and 20 seconds, and exercises rejected
+cycles with both title and pattern captures, checks every fixed build at 10 and 20 seconds, and exercises rejected
 screen RAM, rejected work RAM, screen/work aliasing, all-RAM failure and reset.
 It produces raw 640×288 PNG/PPM captures, 640×480 aspect-correct previews,
 `contact-sheet.png`, and `qualification.json` with measured dwell times,
@@ -86,7 +94,8 @@ The cycle and contact-sheet order, left to right then top to bottom, is:
 11. `glyphs`: both 128-code glyph banks.
 12. `intensity`: normal/high patches and explicitly labelled 50% dithering.
 
-Use any name with `--pattern` to hold it indefinitely; `cycle` is the default.
+Use any name with `--pattern` to show its title once, then hold the pattern
+indefinitely; `cycle` is the default.
 Reset restarts RAM selection and the first screen. A fixed build keeps scanout
 running continuously, including across its internal delay boundaries.
 
@@ -112,8 +121,8 @@ it never calls a subroutine or pushes a return address onto untested RAM.
 There is no visible all-RAM-failed message.
 
 The cycle does not poll CRT status: the board has no CPU readback path through
-A23.1. A 24,579,698-T-state instruction loop takes 9.999877 seconds at the
-nominal 2.458 MHz CPU clock; pattern decompression adds a small transition
+A23.1. A shared instruction loop provides approximately one- and ten-second waits
+at the nominal 2.458 MHz CPU clock; decompression adds a small transition
 overhead. This keeps refresh-driven video fetching active and does not require
 interrupts or a CTC. There is no frame-status recovery/reinitialization loop.
 The screen reports hexadecimal addresses; typical clean RAM selection is F800h with work page F700h.
@@ -139,3 +148,12 @@ levels, the monostable component tolerances or the physical EPROM wiring.
 Sources: [PC1715 ZRE schematic, sheet 2](https://www.sax.de/~zander/pc1715/pc_zres.pdf),
 [service manual, display section](https://www.sax.de/~zander/pc1715/doku/pc_serv.pdf),
 and [Intel 8275 data sheet](https://bitsavers.org/components/intel/8275/1981_8275.pdf).
+
+The capture runner observes work-page byte 0 for the pattern index and byte 1
+for phase (0 title, 1 pattern), only while scanout runs. Phase is reported as
+`title`/`pattern` in transition JSON. This is a diagnostic test interface, not
+a pattern-specific behavior in the emulated video device.
+
+The [8275 datasheet](https://bitsavers.org/components/intel/8275/1984_8275.pdf)
+(Underline Placement) documents the threshold and physical boundary lines.
+ZRE schematic sheet 2 A16.3/A16.2 places LTEN after VSP/reverse processing.

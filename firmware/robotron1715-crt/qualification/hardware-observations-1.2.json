@@ -1,0 +1,30 @@
+{
+  "firmware": "1.2",
+  "observations": "Character-row boundary gaps in solid areas and circle/vertical strokes; horizontal grid lines absent. Consistent with first/last scanline suppression at underline position 11. Photos show custom diagnostic glyphs and cycle progression. Not physical qualification of version 1.3.",
+  "photos": [
+    {
+      "filename": "PXL_20261121_122227922.jpg",
+      "sha256": "393a6323d84ad07c8777413b8306b49644b32e911b1fa5dd3920cf0312501c9c"
+    },
+    {
+      "filename": "PXL_20261121_122249539.jpg",
+      "sha256": "f20ad733e5f8182f6d733ae6d69a3a9427c7411fe2917779432db5cfa699a6fe"
+    },
+    {
+      "filename": "PXL_20261121_122300488.MP.jpg",
+      "sha256": "e9087560370ad3ac566eac26d7fabf7709e905b92d2f299ae79060958dcecfde"
+    },
+    {
+      "filename": "PXL_20261121_122336241.jpg",
+      "sha256": "f7f709461148be5182bc32370a807487320a82ddbbebcef58bb0ffffa8e3610b"
+    },
+    {
+      "filename": "PXL_20261121_122340454.jpg",
+      "sha256": "47d3491ee33230d21e582936e9f20a03a0f741d843deb071c29cacf31dd32f50"
+    },
+    {
+      "filename": "PXL_20261121_122718063.jpg",
+      "sha256": "04d619d2292a797051a7c6b2e30d57889c68c048cc7b1c16588f76091217a989"
+    }
+  ]
+}

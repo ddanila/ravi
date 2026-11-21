@@ -85,6 +85,33 @@ def expected(glyphs, streams, index, screen=0xF800, work=0xF700):
     return reference(stream, glyphs)
 
 
+def title_reference(glyphs, index):
+    # Independently construct visible cells; no firmware name-table decoding.
+    rows = bytearray(b" " * 1920)
+    name = NAMES[index].upper().encode("ascii")
+    offset = 11 * 80 + (80 - len(name)) // 2
+    rows[offset:offset + len(name)] = name
+    return reference(b"\x80" + rows, glyphs)
+
+
+def phase_reference(glyphs, streams, transition):
+    if transition["phase"] == "title":
+        return title_reference(glyphs, transition["pattern"])
+    return expected(glyphs, streams, transition["pattern"],
+                    transition["screen"], transition["work"])
+
+
+def assemble(folder, source):
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "boot.asm").write_text(source)
+    binary = folder / "boot.bin"
+    subprocess.run(["z80asm", "-o", str(binary), str(folder / "boot.asm")], check=True)
+    raw = binary.read_bytes()
+    assert len(raw) <= 2048
+    binary.write_bytes(raw + b"\xff" * (2048 - len(raw)))
+    return binary
+
+
 def run(runner, kit, out, seconds, fault="clean"):
     out.mkdir(parents=True, exist_ok=True)
     result = subprocess.run(
@@ -174,32 +201,28 @@ def qualify(dac, out):
             check=True, text=True, capture_output=True,
         )
         data = json.loads(result.stdout)
-        assert ppm(folder / "frame-00.ppm") != expected(glyphs, streams, 0), name
+        assert ppm(folder / "frame-00.ppm") != title_reference(glyphs, 0), name
         assert data["unexpected_io"] == (1 if name == "floppy-port" else 0)
         report["rejected_mutations"][name] = data
     # A23.1 prevents status reads. Reintroduce the 1.1 polling loop and
     # hold the otherwise floating CPU input low: first screen must get stuck.
     # This is the hardware symptom, not an assumption about open-bus voltage.
-    old_wait = """ ld bc,513
-frames:
+    # The old bounded wait itself is sufficient to reproduce repeated resets;
+    # the 513-successful-frame counter is irrelevant when no flag ever arrives.
+    old_wait = """delay:
  ld de,0
 wait_frame:
  in a,(019h)
  and 020h
- jr nz,frame_seen
+ ret nz
  dec de
  ld a,d
  or e
  jr nz,wait_frame
  jp initialise
-frame_seen:
- dec bc
- ld a,b
- or c
- jr nz,frames
 """
     begin = source.index("delay:\n")
-    end = source.index(" ld a,(iy+0)", begin)
+    end = source.index("; LZ decoder:", begin)
     folder = out / "status-polling-regression"
     folder.mkdir(exist_ok=True)
     (folder / "boot.asm").write_text(source[:begin] + old_wait + source[end:])
@@ -217,35 +240,41 @@ frame_seen:
     assert broken["display_starts"] >= 4 and broken["status_reads"] > 100000
     report["rejected_mutations"]["status-polling"] = broken
     # New firmware advances at the same speed even with low floating inputs.
-    low = run(runner, kit, out / "status-low", 22, "status-low")
-    assert [t["pattern"] for t in low["transitions"]] == [0, 1, 2]
-    assert low["display_starts"] == 3 and low["status_reads"] == 0
+    low = run(runner, kit, out / "status-low", 25, "status-low")
+    assert [(t["pattern"], t["phase"]) for t in low["transitions"]] == [
+        (i, phase) for i in range(3) for phase in ("title", "pattern")]
+    assert low["display_starts"] == 6 and low["status_reads"] == 0
     report["runs"]["status-low"] = low
-    cycle = run(runner, kit, out / "cycle-run", 242)
+    cycle = run(runner, kit, out / "cycle-run", 268)
     transitions = cycle["transitions"]
-    assert [t["pattern"] for t in transitions] == list(range(12)) * 2 + [0]
+    assert [(t["pattern"], t["phase"]) for t in transitions] == [
+        (i, phase) for i in list(range(12)) * 2 + [0]
+        for phase in ("title", "pattern")]
     assert cycle["display_starts"] == len(transitions)
     dwell = [
         (b["cycle"] - a["cycle"]) / cycle["clock_hz"]
         for a, b in zip(transitions, transitions[1:])
     ]
-    assert all(9.5 <= d <= 10.5 for d in dwell)
-    report["dwell_seconds"] = dwell
+    assert all(0.9 <= d <= 1.1 if transitions[n]["phase"] == "title"
+               else 9.9 <= d <= 10.2 for n, d in enumerate(dwell))
+    report["title_seconds"] = dwell[::2]
+    report["dwell_seconds"] = dwell[1::2]
     report["runs"]["cycle"] = cycle
     images = []
     for n, t in enumerate(transitions):
         raster = ppm(out / "cycle-run" / f"frame-{n:02d}.ppm")
-        assert raster == expected(
-            glyphs, streams, t["pattern"], t["screen"], t["work"]
-        ), (n, t)
-        if n < 12:
+        assert raster == phase_reference(glyphs, streams, t), (n, t)
+        if n == 0:
+            png(out / "title-example.png", 640, 288, raster)
+        if n < 24 and t["phase"] == "pattern":
             images.append(raster)
-            png(out / f"{NAMES[n]}-raw.png", 640, 288, raster)
+            name = NAMES[t["pattern"]]
+            png(out / f"{name}-raw.png", 640, 288, raster)
             corrected = b"".join(
                 raster[(y * 288 // 480) * 640 * 3 : (y * 288 // 480 + 1) * 640 * 3]
                 for y in range(480)
             )
-            png(out / f"{NAMES[n]}-4x3.png", 640, 480, corrected)
+            png(out / f"{name}-4x3.png", 640, 480, corrected)
     # Independent simple-pattern invariants catch inverted bits/phase/intensity.
     assert not any(images[7])
     assert set(images[8]) == {170}
@@ -262,36 +291,53 @@ frame_seen:
         result = run(runner, kit, out / fault, 3, fault)
         t = result["transitions"][0]
         assert (t["screen"], t["work"]) == (screen, work), t
-        assert ppm(out / fault / "frame-00.ppm") == expected(
-            glyphs, streams, 0, screen, work
-        )
+        for n, t in enumerate(result["transitions"]):
+            assert ppm(out / fault / f"frame-{n:02d}.ppm") == phase_reference(glyphs, streams, t)
         report["runs"][fault] = result
     dead = run(runner, kit, out / "dead", 3, "dead")
     assert not dead["transitions"] and dead["fetches"] == 0 and dead["sp"] == 65535
     assert dead["pc"] < 2048
     report["runs"]["dead"] = dead
-    reset = run(runner, kit, out / "reset", 3, "reset")
-    assert [t["pattern"] for t in reset["transitions"]] == [0, 0]
-    for frame in (0, 1):
-        assert ppm(out / "reset" / f"frame-{frame:02d}.ppm") == expected(
-            glyphs, streams, 0
-        )
-    report["runs"]["reset"] = reset
+    for fault, phases in (("reset", ["title", "title", "pattern"]),
+                          ("reset-pattern", ["title", "pattern", "title", "pattern"])):
+        reset = run(runner, kit, out / fault, 4, fault)
+        assert [t["pattern"] for t in reset["transitions"]] == [0] * len(phases)
+        assert [t["phase"] for t in reset["transitions"]] == phases
+        for n, t in enumerate(reset["transitions"]):
+            assert ppm(out / fault / f"frame-{n:02d}.ppm") == phase_reference(glyphs, streams, t)
+        report["runs"][fault] = reset
     for index, name in enumerate(NAMES):
         print(f"Qualifying fixed {name}", flush=True)
         fixed = out / ("fixed-" + name)
         build(fixed, name)
         result = run(runner, fixed, fixed / "run", 21)
         assert (
-            result["display_starts"] == 1
-            and len(result["transitions"]) == 1
-            and result["transitions"][0]["pattern"] == index
+            result["display_starts"] == 2
+            and [(t["pattern"], t["phase"]) for t in result["transitions"]]
+            == [(index, "title"), (index, "pattern")]
         )
-        for frame in (0, 110, 120):
+        assert ppm(fixed / "run" / "frame-00.ppm") == title_reference(glyphs, index)
+        for frame in (1, 110, 120):
             assert ppm(fixed / "run" / f"frame-{frame:02d}.ppm") == expected(
                 glyphs, streams, index
             ), (name, frame)
         report["runs"][name] = result
+    # Reintroduce the photographed failure on the corrected controller model.
+    for name in ("grid", "circle", "white", "window"):
+        fixed = out / ("fixed-" + name)
+        folder = out / ("blanking-" + name)
+        asm = (fixed / "boot.asm").read_text().replace("057h,06bh", "057h,0bbh")
+        assemble(folder, asm)
+        (folder / "glyphs.bin").write_bytes(glyphs)
+        data = run(runner, folder, folder / "run", 3)
+        actual = ppm(folder / "run" / "frame-01.ppm")
+        clean = images[NAMES.index(name)]
+        masked = bytearray(clean)
+        for y in range(288):
+            if y % 12 in (0, 11):
+                masked[y*1920:(y+1)*1920] = bytes(1920)
+        assert actual == masked and actual != clean, name
+        report["rejected_mutations"]["boundary-blanking-" + name] = data
     report["raster_sha256"] = {
         name: hashlib.sha256(im).hexdigest() for name, im in zip(NAMES, images)
     }

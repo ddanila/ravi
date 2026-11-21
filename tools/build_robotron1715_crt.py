@@ -167,7 +167,7 @@ def assets():
 
     ident = blank(32)
     for y, s in (
-        (3, "RAVI PC1715 CRT 1.2"),
+        (3, "RAVI PC1715 CRT 1.3"),
         (6, "80 X 24  -  640 X 288"),
         (9, "RAM SCREEN: 0000  WORK: 0000"),
         (12, "12 PATTERNS  -  10 SECONDS"),
@@ -256,8 +256,12 @@ def build(output, pattern="cycle"):
         "@ADVANCE@",
         "inc a\n cp 12\n jr c, selected\n xor a"
         if pattern == "cycle"
-        else "jp delay",
+        else "jp hold",
     )
+    asm += "\nnames:\n"
+    for name in NAMES:
+        data = name.upper().encode("ascii")
+        asm += " db " + ",".join(map(str, [len(data), *data])) + "\n"
     asm += "\npatterns:\n dw " + ",".join("p" + str(i) for i in range(12)) + "\n"
     for i, data in enumerate(compressed):
         asm += f"p{i}:\n"
@@ -289,8 +293,11 @@ def build(output, pattern="cycle"):
                 ROOT / "firmware/robotron1715-crt/boot.asm",
             )
         },
-        "version": "1.2",
+        "version": "1.3",
         "pattern": pattern,
+        "presentation": {"title_seconds": 1, "pattern_seconds": 10 if pattern == "cycle" else None,
+                         "title_style": "centered-on-black", "phase_work_offset": 1,
+                         "phase_values": {"title": 0, "pattern": 1}},
         "boot_used": len(raw),
         "tile_count": tiles,
         "stream_bytes": list(map(len, streams)),

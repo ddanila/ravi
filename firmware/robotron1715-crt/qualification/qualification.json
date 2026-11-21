@@ -1,12 +1,22 @@
 {
   "manifest": {
     "source_sha256": {
-      "tools/build_robotron1715_crt.py": "1ba674af4f334947adddd337e0a566e57c7ca9eecb78cd11bd406b6f14dc1680",
-      "firmware/robotron1715-crt/boot.asm": "18042ec6e841285b7a3e374c0efefacf5cf09121c5e819cfc6bdf8b2242847f5"
+      "tools/build_robotron1715_crt.py": "7f734b93307a8226246189a9e73685f5efd82682a5428567f48cc2ed4dda78c5",
+      "firmware/robotron1715-crt/boot.asm": "12e3cbac263e45f4a8518ec3ca2c1986e8f50583e03b599dca571300f83e0df6"
     },
-    "version": "1.2",
+    "version": "1.3",
     "pattern": "cycle",
-    "boot_used": 1854,
+    "presentation": {
+      "title_seconds": 1,
+      "pattern_seconds": 10,
+      "title_style": "centered-on-black",
+      "phase_work_offset": 1,
+      "phase_values": {
+        "title": 0,
+        "pattern": 1
+      }
+    },
+    "boot_used": 2034,
     "tile_count": 149,
     "stream_bytes": [
       1944,
@@ -44,7 +54,7 @@
     "files": {
       "boot.bin": {
         "bytes": 2048,
-        "sha256": "8621b28cd8e4c4433d52b4161022e50ff36603d99571a06ea9ce3974f8024e82"
+        "sha256": "fd4afbddec93baf878ac7111149cf16168b69d0628643a46f81bc97929a07abd"
       },
       "glyph-standard.bin": {
         "bytes": 2048,
@@ -67,271 +77,519 @@
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 1,
-          "cycle": 25185000,
+          "cycle": 27680000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 1,
+          "cycle": 30183000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 2,
-          "cycle": 49819000,
+          "cycle": 54804000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 2,
+          "cycle": 57316000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
-      "frames": 1117,
-      "fetches": 2166541,
+      "frames": 1271,
+      "fetches": 2452904,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 234,
-      "sp": 63488,
+      "pc": 339,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 3
+      "display_starts": 6
     },
     "cycle": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 1,
-          "cycle": 25185000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 2,
-          "cycle": 49819000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 3,
-          "cycle": 74442000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 4,
-          "cycle": 99065000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 5,
-          "cycle": 123689000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 6,
-          "cycle": 148312000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 7,
-          "cycle": 172935000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 8,
-          "cycle": 197558000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 9,
-          "cycle": 222182000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 10,
-          "cycle": 246807000,
-          "screen": 63488,
-          "work": 63232
-        },
-        {
-          "pattern": 11,
-          "cycle": 271432000,
-          "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
         },
         {
           "pattern": 0,
-          "cycle": 296058000,
+          "cycle": 3059000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 1,
-          "cycle": 320682000,
+          "cycle": 27680000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 1,
+          "cycle": 30183000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 2,
-          "cycle": 345316000,
+          "cycle": 54804000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 2,
+          "cycle": 57316000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 3,
-          "cycle": 369939000,
+          "cycle": 81937000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 3,
+          "cycle": 84438000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 4,
-          "cycle": 394562000,
+          "cycle": 109059000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 4,
+          "cycle": 111561000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 5,
-          "cycle": 419186000,
+          "cycle": 136182000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 5,
+          "cycle": 138683000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 6,
-          "cycle": 443809000,
+          "cycle": 163304000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 6,
+          "cycle": 165806000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 7,
-          "cycle": 468432000,
+          "cycle": 190427000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 7,
+          "cycle": 192928000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 8,
-          "cycle": 493055000,
+          "cycle": 217550000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 8,
+          "cycle": 220051000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 9,
-          "cycle": 517679000,
+          "cycle": 244672000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 9,
+          "cycle": 247174000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 10,
-          "cycle": 542304000,
+          "cycle": 271795000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 10,
+          "cycle": 274299000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 11,
-          "cycle": 566883000,
+          "cycle": 298920000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 11,
+          "cycle": 301424000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         },
         {
           "pattern": 0,
-          "cycle": 591555000,
+          "cycle": 326045000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 328548000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 1,
+          "cycle": 353169000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 1,
+          "cycle": 355672000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 2,
+          "cycle": 380293000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 2,
+          "cycle": 382805000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 3,
+          "cycle": 407426000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 3,
+          "cycle": 409927000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 4,
+          "cycle": 434548000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 4,
+          "cycle": 437050000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 5,
+          "cycle": 461671000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 5,
+          "cycle": 464172000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 6,
+          "cycle": 488793000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 6,
+          "cycle": 491295000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 7,
+          "cycle": 515916000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 7,
+          "cycle": 518417000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 8,
+          "cycle": 543038000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 8,
+          "cycle": 545540000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 9,
+          "cycle": 570161000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 9,
+          "cycle": 572663000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 10,
+          "cycle": 597284000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 10,
+          "cycle": 599787000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 11,
+          "cycle": 624409000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 11,
+          "cycle": 626913000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 0,
+          "cycle": 651533000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 654037000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
-      "frames": 12399,
-      "fetches": 24059551,
+      "frames": 13732,
+      "fetches": 26564614,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 237,
-      "sp": 63488,
+      "pc": 339,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 25
+      "display_starts": 50
     },
     "screen": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 1280000,
+          "cycle": 1275000,
           "screen": 61440,
-          "work": 61184
+          "work": 61184,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3779000,
+          "screen": 61440,
+          "work": 61184,
+          "phase": "pattern"
         }
       ],
       "frames": 128,
-      "fetches": 247219,
+      "fetches": 243035,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 238,
-      "sp": 61440,
+      "pc": 339,
+      "sp": 61438,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "work": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 641000,
+          "cycle": 637000,
           "screen": 63488,
-          "work": 62976
+          "work": 62976,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3140000,
+          "screen": 63488,
+          "work": 62976,
+          "phase": "pattern"
         }
       ],
       "frames": 141,
-      "fetches": 273213,
+      "fetches": 268955,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 237,
-      "sp": 63232,
+      "pc": 339,
+      "sp": 63230,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "alias": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 672000,
+          "cycle": 667000,
           "screen": 63488,
-          "work": 62976
+          "work": 62976,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3171000,
+          "screen": 63488,
+          "work": 62976,
+          "phase": "pattern"
         }
       ],
       "frames": 140,
-      "fetches": 271998,
+      "fetches": 267740,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 235,
-      "sp": 63232,
+      "pc": 343,
+      "sp": 63230,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "dead": {
       "clock_hz": 2458000,
@@ -354,305 +612,455 @@
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
         },
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
-      "frames": 91,
-      "fetches": 176823,
+      "frames": 143,
+      "fetches": 272195,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 238,
-      "sp": 63488,
+      "pc": 339,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 2
+      "display_starts": 3
+    },
+    "reset-pattern": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 0,
+          "cycle": 556000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        },
+        {
+          "pattern": 0,
+          "cycle": 556000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        }
+      ],
+      "frames": 91,
+      "fetches": 172484,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 340,
+      "sp": 63486,
+      "io_reads": 0,
+      "status_reads": 0,
+      "display_starts": 4
     },
     "identity": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2070925,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 234,
-      "sp": 63488,
+      "pc": 336,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "grid": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 1,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 1,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2070927,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 235,
-      "sp": 63488,
+      "pc": 338,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "circle": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 2,
-          "cycle": 569000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 2,
+          "cycle": 3068000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2079042,
+      "fetches": 2074765,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 335,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "vertical": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 3,
-          "cycle": 558000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 3,
+          "cycle": 3057000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2071008,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 336,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "horizontal": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 4,
-          "cycle": 558000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 4,
+          "cycle": 3057000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2071008,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 338,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "dots": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 5,
-          "cycle": 558000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 5,
+          "cycle": 3057000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2071008,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 336,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "checker": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 6,
-          "cycle": 558000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 6,
+          "cycle": 3057000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2071008,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 339,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "black": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 7,
-          "cycle": 558000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 7,
+          "cycle": 3057000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2071008,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 337,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "white": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 8,
-          "cycle": 558000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 8,
+          "cycle": 3058000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2071008,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 236,
-      "sp": 63488,
+      "pc": 336,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "window": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 9,
-          "cycle": 559000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 9,
+          "cycle": 3058000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2070991,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 239,
-      "sp": 63488,
+      "pc": 340,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "glyphs": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 10,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 10,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2070927,
+      "fetches": 2066669,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 234,
-      "sp": 63488,
+      "pc": 335,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "intensity": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 11,
-          "cycle": 561000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 11,
+          "cycle": 3060000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 1066,
-      "fetches": 2083669,
+      "fetches": 2078817,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 235,
-      "sp": 63488,
+      "pc": 338,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     }
   },
   "rejected_mutations": {
@@ -661,99 +1069,267 @@
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 143,
-      "fetches": 14576,
+      "fetches": 14484,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 1,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 237,
-      "sp": 63488,
+      "pc": 339,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "wrong-address-bits": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 0,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
         }
       ],
       "frames": 143,
-      "fetches": 30184,
+      "fetches": 30047,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 237,
-      "sp": 63488,
+      "pc": 339,
+      "sp": 63486,
       "io_reads": 0,
       "status_reads": 0,
-      "display_starts": 1
+      "display_starts": 2
     },
     "status-polling": {
       "clock_hz": 2458000,
       "transitions": [
         {
           "pattern": 0,
-          "cycle": 560000,
+          "cycle": 556000,
           "screen": 63488,
-          "work": 63232
+          "work": 63232,
+          "phase": "title"
         }
       ],
-      "frames": 294,
-      "fetches": 568603,
+      "frames": 293,
+      "fetches": 562373,
       "underruns": 0,
       "overflows": 0,
       "unexpected_io": 0,
       "unclaimed_reads": 0,
       "rom_enabled": 1,
-      "pc": 244,
-      "sp": 63488,
-      "io_reads": 274603,
-      "status_reads": 274603,
+      "pc": 339,
+      "sp": 63478,
+      "io_reads": 286295,
+      "status_reads": 286295,
       "display_starts": 5
+    },
+    "boundary-blanking-grid": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 1,
+          "cycle": 556000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 1,
+          "cycle": 3059000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        }
+      ],
+      "frames": 143,
+      "fetches": 272195,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 338,
+      "sp": 63486,
+      "io_reads": 0,
+      "status_reads": 0,
+      "display_starts": 2
+    },
+    "boundary-blanking-circle": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 2,
+          "cycle": 556000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 2,
+          "cycle": 3068000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        }
+      ],
+      "frames": 143,
+      "fetches": 272907,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 335,
+      "sp": 63486,
+      "io_reads": 0,
+      "status_reads": 0,
+      "display_starts": 2
+    },
+    "boundary-blanking-white": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 8,
+          "cycle": 556000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 8,
+          "cycle": 3058000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        }
+      ],
+      "frames": 143,
+      "fetches": 272195,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 336,
+      "sp": 63486,
+      "io_reads": 0,
+      "status_reads": 0,
+      "display_starts": 2
+    },
+    "boundary-blanking-window": {
+      "clock_hz": 2458000,
+      "transitions": [
+        {
+          "pattern": 9,
+          "cycle": 556000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "title"
+        },
+        {
+          "pattern": 9,
+          "cycle": 3058000,
+          "screen": 63488,
+          "work": 63232,
+          "phase": "pattern"
+        }
+      ],
+      "frames": 143,
+      "fetches": 272195,
+      "underruns": 0,
+      "overflows": 0,
+      "unexpected_io": 0,
+      "unclaimed_reads": 0,
+      "rom_enabled": 1,
+      "pc": 340,
+      "sp": 63486,
+      "io_reads": 0,
+      "status_reads": 0,
+      "display_starts": 2
     }
   },
+  "title_seconds": [
+    1.0183075671277462,
+    1.0183075671277462,
+    1.0219690805532953,
+    1.017493897477624,
+    1.0179007323026852,
+    1.017493897477624,
+    1.0179007323026852,
+    1.017493897477624,
+    1.017493897477624,
+    1.0179007323026852,
+    1.0187144019528072,
+    1.0187144019528072,
+    1.0183075671277462,
+    1.0183075671277462,
+    1.0219690805532953,
+    1.017493897477624,
+    1.0179007323026852,
+    1.017493897477624,
+    1.0179007323026852,
+    1.017493897477624,
+    1.0179007323026852,
+    1.0179007323026852,
+    1.0183075671277462,
+    1.0187144019528072,
+    1.0187144019528072
+  ],
   "dwell_seconds": [
-    10.018307567127746,
-    10.021969080553296,
-    10.017493897477625,
-    10.017493897477625,
-    10.017900732302685,
-    10.017493897477625,
-    10.017493897477625,
-    10.017493897477625,
-    10.017900732302685,
-    10.018307567127746,
-    10.018307567127746,
-    10.018714401952808,
-    10.017900732302685,
-    10.021969080553296,
-    10.017493897477625,
-    10.017493897477625,
-    10.017900732302685,
-    10.017493897477625,
-    10.017493897477625,
-    10.017493897477625,
-    10.017900732302685,
-    10.018307567127746,
-    9.99959316517494,
-    10.037428803905614
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.017087062652562,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.016680227827502,
+    10.017087062652562,
+    10.016273393002441
   ],
   "raster_sha256": {
-    "identity": "474a423fc97d02f2c30fd48ec1fb8a594c73cc546c01f4bda2398de3de564d1e",
+    "identity": "6ef023d0b16ba77be7278853837fa81968c2d8a15fbe3da64a6d54e52f24b39c",
     "grid": "007840ca4baf7363c38a6c4de7046e89d56bf85e444c142629bfe185fd9afa7d",
     "circle": "946b694918c28d92cc1736ee7b1b030b145c5a9ace2229790c78de342a286c5f",
     "vertical": "7bd6518bf90b9765c6b9704e023836dd862198b73884102a70d5dda3552c50f9",
@@ -766,6 +1342,6 @@
     "glyphs": "2d0178660fb5e22ec75745ee2a887865d5b160a5336a1ce5a8abe0ad8f23c131",
     "intensity": "c6119d4279e918ce25695ecdc3d4e0bea0dd51e610e7c1a84a9b476418809381"
   },
-  "dac_revision": "e078e8709ce4be98bfd9e6d1c941e3b353b127c9",
+  "dac_revision": "97a82a98f2c17e7328337dc2ae6a96bcfa16835a",
   "dac_dirty": false
 }

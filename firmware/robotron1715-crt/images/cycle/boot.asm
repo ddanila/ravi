@@ -1,4 +1,4 @@
-; RAVI PC1715 CRT 1.2. Z80, 2716 boot ROM, overlay remains enabled.
+; RAVI PC1715 CRT 1.3. Z80, 2716 boot ROM, overlay remains enabled.
 ; Destructive minimum-RAM search. No CALL/PUSH/interrupts until a work page
 ; and a distinct non-aliasing screen block have both passed two fill/read passes.
  org 0
@@ -138,8 +138,50 @@ init_loop:
  and 03eh
  out (034h),a
 show:
- ld a,040h
- out (019h),a
+ ld (iy+1),0 ; title phase; work-page byte is observed only by test runner
+ push ix
+ pop hl
+ ld (hl),080h ; standard glyph bank, invisible field attribute
+ inc hl
+ ld (hl),32
+ push hl
+ pop de
+ inc de
+ ld bc,1919
+ ldir
+ ld hl,names
+ ld b,(iy+0)
+ inc b
+name_next:
+ ld e,(hl)
+ inc hl
+ dec b
+ jr z,name_found
+ ld d,0
+ add hl,de
+ jr name_next
+name_found:
+ ld c,e
+ push hl
+ ld a,80
+ sub c
+ srl a
+ ld e,a
+ ld d,0
+ push ix
+ pop hl
+ add hl,de
+ ld de,881 ; row 11, plus initial field attribute
+ add hl,de
+ ex de,hl
+ pop hl
+ ld b,0
+ ldir
+ call start
+ ld d,2
+ call delay
+ call stop
+ ld (iy+1),1 ; clean pattern phase
  ld a,(iy+0)
  add a,a
  ld l,a
@@ -156,30 +198,41 @@ show:
  ld a,(iy+0)
  or a
  call z,addresses
- ld a,023h
- out (019h),a
- ; A23.1 is a one-way latch: CPU cannot read 8275 status on this board.
- ; 24,579,698 T states = 9.999877 s at nominal 2.458 MHz.
- ; Execute instructions continuously to preserve refresh-driven video fetches.
-delay:
- ld d,16
-delay_outer:
- ld bc,59085
-delay_inner:
- dec bc
- ld a,b
- or c
- jr nz,delay_inner
- dec d
- jr nz,delay_outer
+ call start
+hold:
+ ld d,20
+ call delay
  ld a,(iy+0)
  inc a
  cp 12
  jr c, selected
  xor a
 selected:
+ push af
+ call stop
+ pop af
  ld (iy+0),a
  jp show
+stop:
+ ld a,040h
+ out (019h),a
+ ret
+start:
+ ld a,023h
+ out (019h),a
+ ret
+; No CRT status reads. Two iterations ~1 s; twenty ~10 s at 2.458 MHz.
+; Instruction execution preserves refresh-driven display fetching.
+delay:
+ ld bc,47268
+delay_inner:
+ dec bc
+ ld a,b
+ or c
+ jr nz,delay_inner
+ dec d
+ jr nz,delay
+ ret
 ; LZ decoder: zero=end, low control=literal count;
 ; high control=match length minus three, then little-endian backward distance.
 unpack:
@@ -247,13 +300,27 @@ digit_store:
  ret
 ; 80 columns, 24+2 rows, 12 scanlines, invisible attributes, 28 H blank.
 parameters:
- db 79,057h,0bbh,00dh
+ db 79,057h,06bh,00dh
+
+names:
+ db 8,73,68,69,78,84,73,84,89
+ db 4,71,82,73,68
+ db 6,67,73,82,67,76,69
+ db 8,86,69,82,84,73,67,65,76
+ db 10,72,79,82,73,90,79,78,84,65,76
+ db 4,68,79,84,83
+ db 7,67,72,69,67,75,69,82
+ db 5,66,76,65,67,75
+ db 5,87,72,73,84,69
+ db 6,87,73,78,68,79,87
+ db 6,71,76,89,80,72,83
+ db 9,73,78,84,69,78,83,73,84,89
 
 patterns:
  dw p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11
 p0:
  db 2,128,32,204,1,0,255,81,0,188,162,0,19,82,65,86,73,32,80,67,49,55,49,53
- db 32,67,82,84,32,49,46,50,255,243,0,218,149,1,14,56,48,32,88,32,50,52,32,32
+ db 32,67,82,84,32,49,46,51,255,243,0,218,149,1,14,56,48,32,88,32,50,52,32,32
  db 45,32,32,54,52,130,13,0,2,56,56,255,230,1,214,136,2,22,82,65,77,32,83,67
  db 82,69,69,78,58,32,48,48,48,48,32,32,87,79,82,75,133,12,0,255,217,2,209,123
  db 3,11,49,50,32,80,65,84,84,69,82,78,83,130,232,1,10,49,48,32,83,69,67,79

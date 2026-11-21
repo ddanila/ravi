@@ -1,0 +1,26 @@
+{
+  "hardware_executed": false,
+  "cases": [
+    {
+      "legacy": 0,
+      "screen_ram_has_banner": true,
+      "running": 1,
+      "lit_pixels": 1491,
+      "fetches": 73840,
+      "underruns": 0,
+      "platform": "platform",
+      "sha256": "ad77135823e2ca740f6499ba9d6e3ebdcedf6c07384c269a1891a3816b0396bf"
+    },
+    {
+      "legacy": 0,
+      "screen_ram_has_banner": true,
+      "running": 1,
+      "lit_pixels": 1491,
+      "fetches": 73840,
+      "underruns": 0,
+      "platform": "platform-serial",
+      "sha256": "58913a9be6a1ad69b41e52abbde808a5c788fc5d2a608004459eeacc23e64ff9"
+    }
+  ],
+  "dac_revision": "97a82a98f2c17e7328337dc2ae6a96bcfa16835a"
+}
