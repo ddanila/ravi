@@ -4,8 +4,8 @@ import json
 import os
 import random
 import unittest
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 from test_robotron1715w import Peer
 

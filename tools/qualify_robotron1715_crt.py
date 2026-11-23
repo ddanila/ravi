@@ -90,15 +90,16 @@ def title_reference(glyphs, index):
     rows = bytearray(b" " * 1920)
     name = NAMES[index].upper().encode("ascii")
     offset = 11 * 80 + (80 - len(name)) // 2
-    rows[offset:offset + len(name)] = name
+    rows[offset : offset + len(name)] = name
     return reference(b"\x80" + rows, glyphs)
 
 
 def phase_reference(glyphs, streams, transition):
     if transition["phase"] == "title":
         return title_reference(glyphs, transition["pattern"])
-    return expected(glyphs, streams, transition["pattern"],
-                    transition["screen"], transition["work"])
+    return expected(
+        glyphs, streams, transition["pattern"], transition["screen"], transition["work"]
+    )
 
 
 def assemble(folder, source):
@@ -192,13 +193,24 @@ def qualify(dac, out):
         folder.mkdir(exist_ok=True)
         (folder / "boot.asm").write_text(asm)
         binary = folder / "boot.bin"
-        subprocess.run(["z80asm", "-o", str(binary), str(folder / "boot.asm")], check=True)
+        subprocess.run(
+            ["z80asm", "-o", str(binary), str(folder / "boot.asm")], check=True
+        )
         raw = binary.read_bytes()
         assert len(raw) <= 2048
         binary.write_bytes(raw + b"\xff" * (2048 - len(raw)))
         result = subprocess.run(
-            [str(runner), str(binary), str(kit / "glyphs.bin"), str(folder), "3", "clean"],
-            check=True, text=True, capture_output=True,
+            [
+                str(runner),
+                str(binary),
+                str(kit / "glyphs.bin"),
+                str(folder),
+                "3",
+                "clean",
+            ],
+            check=True,
+            text=True,
+            capture_output=True,
         )
         data = json.loads(result.stdout)
         assert ppm(folder / "frame-00.ppm") != title_reference(glyphs, 0), name
@@ -232,8 +244,17 @@ wait_frame:
     assert len(raw) <= 2048
     binary.write_bytes(raw + b"\xff" * (2048 - len(raw)))
     result = subprocess.run(
-        [str(runner), str(binary), str(kit / "glyphs.bin"), str(folder), "6", "status-low"],
-        check=True, text=True, capture_output=True,
+        [
+            str(runner),
+            str(binary),
+            str(kit / "glyphs.bin"),
+            str(folder),
+            "6",
+            "status-low",
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
     )
     broken = json.loads(result.stdout)
     assert [t["pattern"] for t in broken["transitions"]] == [0]
@@ -242,21 +263,24 @@ wait_frame:
     # New firmware advances at the same speed even with low floating inputs.
     low = run(runner, kit, out / "status-low", 25, "status-low")
     assert [(t["pattern"], t["phase"]) for t in low["transitions"]] == [
-        (i, phase) for i in range(3) for phase in ("title", "pattern")]
+        (i, phase) for i in range(3) for phase in ("title", "pattern")
+    ]
     assert low["display_starts"] == 6 and low["status_reads"] == 0
     report["runs"]["status-low"] = low
     cycle = run(runner, kit, out / "cycle-run", 268)
     transitions = cycle["transitions"]
     assert [(t["pattern"], t["phase"]) for t in transitions] == [
-        (i, phase) for i in list(range(12)) * 2 + [0]
-        for phase in ("title", "pattern")]
+        (i, phase) for i in list(range(12)) * 2 + [0] for phase in ("title", "pattern")
+    ]
     assert cycle["display_starts"] == len(transitions)
     dwell = [
         (b["cycle"] - a["cycle"]) / cycle["clock_hz"]
         for a, b in zip(transitions, transitions[1:])
     ]
-    assert all(0.9 <= d <= 1.1 if transitions[n]["phase"] == "title"
-               else 9.9 <= d <= 10.2 for n, d in enumerate(dwell))
+    assert all(
+        0.9 <= d <= 1.1 if transitions[n]["phase"] == "title" else 9.9 <= d <= 10.2
+        for n, d in enumerate(dwell)
+    )
     report["title_seconds"] = dwell[::2]
     report["dwell_seconds"] = dwell[1::2]
     report["runs"]["cycle"] = cycle
@@ -292,30 +316,34 @@ wait_frame:
         t = result["transitions"][0]
         assert (t["screen"], t["work"]) == (screen, work), t
         for n, t in enumerate(result["transitions"]):
-            assert ppm(out / fault / f"frame-{n:02d}.ppm") == phase_reference(glyphs, streams, t)
+            assert ppm(out / fault / f"frame-{n:02d}.ppm") == phase_reference(
+                glyphs, streams, t
+            )
         report["runs"][fault] = result
     dead = run(runner, kit, out / "dead", 3, "dead")
     assert not dead["transitions"] and dead["fetches"] == 0 and dead["sp"] == 65535
     assert dead["pc"] < 2048
     report["runs"]["dead"] = dead
-    for fault, phases in (("reset", ["title", "title", "pattern"]),
-                          ("reset-pattern", ["title", "pattern", "title", "pattern"])):
+    for fault, phases in (
+        ("reset", ["title", "title", "pattern"]),
+        ("reset-pattern", ["title", "pattern", "title", "pattern"]),
+    ):
         reset = run(runner, kit, out / fault, 4, fault)
         assert [t["pattern"] for t in reset["transitions"]] == [0] * len(phases)
         assert [t["phase"] for t in reset["transitions"]] == phases
         for n, t in enumerate(reset["transitions"]):
-            assert ppm(out / fault / f"frame-{n:02d}.ppm") == phase_reference(glyphs, streams, t)
+            assert ppm(out / fault / f"frame-{n:02d}.ppm") == phase_reference(
+                glyphs, streams, t
+            )
         report["runs"][fault] = reset
     for index, name in enumerate(NAMES):
         print(f"Qualifying fixed {name}", flush=True)
         fixed = out / ("fixed-" + name)
         build(fixed, name)
         result = run(runner, fixed, fixed / "run", 21)
-        assert (
-            result["display_starts"] == 2
-            and [(t["pattern"], t["phase"]) for t in result["transitions"]]
-            == [(index, "title"), (index, "pattern")]
-        )
+        assert result["display_starts"] == 2 and [
+            (t["pattern"], t["phase"]) for t in result["transitions"]
+        ] == [(index, "title"), (index, "pattern")]
         assert ppm(fixed / "run" / "frame-00.ppm") == title_reference(glyphs, index)
         for frame in (1, 110, 120):
             assert ppm(fixed / "run" / f"frame-{frame:02d}.ppm") == expected(
@@ -335,7 +363,7 @@ wait_frame:
         masked = bytearray(clean)
         for y in range(288):
             if y % 12 in (0, 11):
-                masked[y*1920:(y+1)*1920] = bytes(1920)
+                masked[y * 1920 : (y + 1) * 1920] = bytes(1920)
         assert actual == masked and actual != clean, name
         report["rejected_mutations"]["boundary-blanking-" + name] = data
     report["raster_sha256"] = {

@@ -254,9 +254,7 @@ def build(output, pattern="cycle"):
     asm = asm.replace("@FIRST@", str(0 if pattern == "cycle" else NAMES.index(pattern)))
     asm = asm.replace(
         "@ADVANCE@",
-        "inc a\n cp 12\n jr c, selected\n xor a"
-        if pattern == "cycle"
-        else "jp hold",
+        "inc a\n cp 12\n jr c, selected\n xor a" if pattern == "cycle" else "jp hold",
     )
     asm += "\nnames:\n"
     for name in NAMES:
@@ -295,9 +293,13 @@ def build(output, pattern="cycle"):
         },
         "version": "1.3",
         "pattern": pattern,
-        "presentation": {"title_seconds": 1, "pattern_seconds": 10 if pattern == "cycle" else None,
-                         "title_style": "centered-on-black", "phase_work_offset": 1,
-                         "phase_values": {"title": 0, "pattern": 1}},
+        "presentation": {
+            "title_seconds": 1,
+            "pattern_seconds": 10 if pattern == "cycle" else None,
+            "title_style": "centered-on-black",
+            "phase_work_offset": 1,
+            "phase_values": {"title": 0, "pattern": 1},
+        },
         "boot_used": len(raw),
         "tile_count": tiles,
         "stream_bytes": list(map(len, streams)),
