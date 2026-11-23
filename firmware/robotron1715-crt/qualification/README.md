@@ -1,6 +1,6 @@
 # CRT 1.3 qualification — 2026-11-21
 
-Passed against clean DAC revision `97a82a98f2c17e7328337dc2ae6a96bcfa16835a`.
+Passed against clean DAC revision `b09b6217f7d61f239cc12b17ba5ef499c21522d6`.
 See [full results](qualification.json), [pattern gallery](contact-sheet.png),
 [title-card example](title-example.png) and [ready images](../images).
 
